@@ -10,4 +10,20 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    sourcemap: false,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Skip certain warnings
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') {
+          return;
+        }
+        // Use default for everything else
+        warn(warning);
+      }
+    }
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom']
+  }
 })

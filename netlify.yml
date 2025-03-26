@@ -1,0 +1,14 @@
+version: 1.0
+
+build:
+  environment:
+    NODE_VERSION: 18
+    NPM_VERSION: 10
+    GO_IMPORT_PATH: ""
+    GO_VERSION: "none"
+  command: npm run build
+  publish: dist
+
+plugins:
+  - package: "@netlify/plugin-nextjs"
+    enabled: false

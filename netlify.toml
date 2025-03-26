@@ -5,6 +5,8 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
+  GO_IMPORT_PATH = ""
+  GO_VERSION = "none"
 
 [[redirects]]
   from = "/*"
