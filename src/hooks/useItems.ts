@@ -1,132 +1,99 @@
-import { useState, useEffect } from 'react'
-import { items as itemsApi, Item } from '@/services/api'
-import { useAuth } from '@/contexts/AuthContext'
+import { useState, useEffect, useCallback } from 'react';
+import { Item } from '@/services/api';
 
-export function useItems(type?: 'lost' | 'found') {
-  const [data, setData] = useState<Item[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
-  
-  const fetchItems = async () => {
-    setLoading(true)
-    setError(null)
-    
+interface UseItemsResult {
+  data: Item[];
+  loading: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
+  createItem: (item: Omit<Item, 'id' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
+}
+
+export function useItems(type?: 'lost' | 'found'): UseItemsResult {
+  const [data, setData] = useState<Item[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchItems = useCallback(async () => {
     try {
-      const response = await itemsApi.getItems(type)
+      setLoading(true);
+      // Simulate API call with mock data
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch items')
-      }
+      // Mock data for testing
+      const mockItems: Item[] = [
+        // You can replace this with actual API calls
+        {
+          id: 1,
+          name: "Laptop",
+          description: "Silver MacBook Pro",
+          category: "Electronics",
+          location: "Library",
+          date: "2023-05-15",
+          type: "lost",
+          status: "Active",
+          user_id: "user1",
+          created_at: "2023-05-15T10:30:00Z"
+        },
+        {
+          id: 2,
+          name: "Water Bottle",
+          description: "Blue Hydro Flask",
+          category: "Accessories",
+          location: "Gym",
+          date: "2023-05-16",
+          type: "found",
+          status: "Waiting for owner",
+          user_id: "user2",
+          created_at: "2023-05-16T14:20:00Z"
+        }
+      ];
       
-      setData(response.data)
-    } catch (error: any) {
-      console.error('Error fetching items:', error)
-      setError(error.message)
+      // Filter by type if specified
+      const filteredItems = type 
+        ? mockItems.filter(item => item.type === type) 
+        : mockItems;
+      
+      setData(filteredItems);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to fetch items'));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-  
+  }, [type]);
+
+  const refresh = useCallback(async () => {
+    await fetchItems();
+  }, [fetchItems]);
+
+  const createItem = useCallback(async (item: Omit<Item, 'id' | 'created_at'>) => {
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // In a real app, you'd call your API here
+      // For now, just add it to the local state
+      const newItem: Item = {
+        ...item,
+        id: Math.floor(Math.random() * 10000),
+        created_at: new Date().toISOString()
+      };
+      
+      setData(prev => [...prev, newItem]);
+      
+      return { success: true };
+    } catch (err) {
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Failed to create item' 
+      };
+    }
+  }, []);
+
   useEffect(() => {
-    fetchItems()
-  }, [type])
-  
-  const createItem = async (item: Omit<Item, 'id' | 'created_at'>) => {
-    try {
-      const response = await itemsApi.createItem(item)
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to create item')
-      }
-      
-      // Refresh the list after creating
-      fetchItems()
-      
-      return { success: true }
-    } catch (error: any) {
-      console.error('Error creating item:', error)
-      return { success: false, error: error.message }
-    }
-  }
-  
-  const updateItem = async (id: number, updates: Partial<Item>) => {
-    try {
-      const response = await itemsApi.updateItem(id, updates)
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to update item')
-      }
-      
-      // Refresh the list after updating
-      fetchItems()
-      
-      return { success: true }
-    } catch (error: any) {
-      console.error('Error updating item:', error)
-      return { success: false, error: error.message }
-    }
-  }
-  
-  const deleteItem = async (id: number) => {
-    try {
-      const response = await itemsApi.deleteItem(id)
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to delete item')
-      }
-      
-      // Refresh the list after deleting
-      fetchItems()
-      
-      return { success: true }
-    } catch (error: any) {
-      console.error('Error deleting item:', error)
-      return { success: false, error: error.message }
-    }
-  }
-  
-  const searchItems = async (query: string) => {
-    try {
-      const response = await itemsApi.searchItems(query)
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to search items')
-      }
-      
-      return { success: true, data: response.data }
-    } catch (error: any) {
-      console.error('Error searching items:', error)
-      return { success: false, error: error.message, data: [] }
-    }
-  }
-  
-  const getUserItems = async () => {
-    if (!user) return { success: false, error: 'User not authenticated', data: [] }
-    
-    try {
-      const response = await itemsApi.getItems(undefined, undefined, user.id)
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch user items')
-      }
-      
-      return { success: true, data: response.data }
-    } catch (error: any) {
-      console.error('Error fetching user items:', error)
-      return { success: false, error: error.message, data: [] }
-    }
-  }
-  
-  return {
-    data,
-    loading,
-    error,
-    refresh: fetchItems,
-    createItem,
-    updateItem,
-    deleteItem,
-    searchItems,
-    getUserItems
-  }
+    fetchItems();
+  }, [fetchItems]);
+
+  return { data, loading, error, refresh, createItem };
 }

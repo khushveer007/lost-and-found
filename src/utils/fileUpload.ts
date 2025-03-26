@@ -9,36 +9,40 @@ import { v4 as uuidv4 } from 'uuid'
  */
 
 /**
- * Upload an item image to storage
- * @param file The file to upload
- * @param userId The user ID to associate with the file
- * @returns Result object with success status and URL or error
+ * File upload utility for the application
+ */
+
+/**
+ * Uploads an item image
+ * @param file The file to be uploaded
+ * @param userId The ID of the user uploading the file
+ * @returns Result object with success status, URL and possible error
  */
 export async function uploadItemImage(
   file: File, 
   userId: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
+  if (!file) {
+    return { success: false, error: 'No file provided' };
+  }
+
   try {
-    if (!file) {
-      return { success: false, error: 'No file provided' };
-    }
+    // Simulate an upload delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // This is a placeholder implementation
-    // In a real app, you would upload to your backend or service like Supabase Storage
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Mock a successful upload with a fake URL
-        resolve({
-          success: true,
-          url: URL.createObjectURL(file)
-        });
-      }, 1500);
-    });
-  } catch (error: any) {
-    console.error('Upload error:', error);
+    // In a real app, this would be an actual upload to a storage service
+    // For development, we'll create an object URL
+    const url = URL.createObjectURL(file);
+    
+    return {
+      success: true,
+      url
+    };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to upload file';
     return { 
       success: false, 
-      error: error.message || 'Failed to upload image' 
+      error: errorMessage
     };
   }
 }

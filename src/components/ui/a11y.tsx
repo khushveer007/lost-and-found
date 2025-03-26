@@ -43,12 +43,14 @@ export function SkipLink({ targetId, children = 'Skip to content' }: SkipLinkPro
  */
 export function FocusRing() {
   return (
-    <style jsx global>{`
-      :focus-visible {
-        outline: 2px solid var(--focus-ring);
-        outline-offset: 2px;
-      }
-    `}</style>
+    <style dangerouslySetInnerHTML={{
+      __html: `
+        :focus-visible {
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+        }
+      `
+    }} />
   );
 }
 

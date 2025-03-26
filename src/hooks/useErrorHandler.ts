@@ -3,51 +3,40 @@ import { useState, useCallback } from 'react';
 interface ErrorState {
   hasError: boolean;
   message: string | null;
-  field?: string | null;
+  field: string | null;
   timestamp: number;
+}
+
+interface UseErrorHandlerResult {
+  error: ErrorState;
+  setError: (message: string, field?: string) => void;
+  clearError: () => void;
+  setErrorMessage: (message: string) => void;
+  handleError: (err: unknown, defaultMessage?: string) => { message: string };
 }
 
 /**
  * Custom hook for handling errors throughout the application
- * Provides methods for setting, clearing, and logging errors
  */
-export function useErrorHandler() {
-  const [error, setError] = useState<ErrorState>({
+export function useErrorHandler(): UseErrorHandlerResult {
+  const [error, setErrorState] = useState<ErrorState>({
     hasError: false,
     message: null,
     field: null,
     timestamp: 0
   });
 
-  /**
-   * Set an error with the given message and optional field
-   */
-  const setErrorMessage = useCallback((message: string, field?: string) => {
-    console.error(`Error${field ? ` in ${field}` : ''}: ${message}`);
-    setError({
+  const setError = useCallback((message: string, field?: string) => {
+    setErrorState({
       hasError: true,
       message,
       field: field || null,
       timestamp: Date.now()
     });
-    
-    // Automatically focus the field if it exists
-    if (field) {
-      setTimeout(() => {
-        const element = document.getElementById(field);
-        if (element) {
-          element.focus();
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-    }
   }, []);
 
-  /**
-   * Clear the current error
-   */
   const clearError = useCallback(() => {
-    setError({
+    setErrorState({
       hasError: false,
       message: null,
       field: null,
@@ -55,33 +44,40 @@ export function useErrorHandler() {
     });
   }, []);
 
-  /**
-   * Handle an error object, extracting useful information
-   */
-  const handleError = useCallback((err: any, defaultMessage: string = 'An unexpected error occurred') => {
-    // Extract the most useful error message
+  const setErrorMessage = useCallback((message: string) => {
+    setError(message);
+  }, [setError]);
+
+  const handleError = useCallback((err: unknown, defaultMessage = 'An unexpected error occurred') => {
     let errorMessage = defaultMessage;
     
     if (err) {
       if (typeof err === 'string') {
         errorMessage = err;
-      } else if (err.message) {
+      } else if (err instanceof Error) {
         errorMessage = err.message;
-      } else if (err.error) {
-        errorMessage = typeof err.error === 'string' ? err.error : JSON.stringify(err.error);
+      } else if (typeof err === 'object' && err !== null) {
+        const errObj = err as Record<string, any>;
+        if (errObj.message) {
+          errorMessage = errObj.message;
+        } else if (errObj.error) {
+          errorMessage = typeof errObj.error === 'string' 
+            ? errObj.error 
+            : JSON.stringify(errObj.error);
+        }
       }
     }
     
     setErrorMessage(errorMessage);
     
-    // Return the error for further processing
     return { message: errorMessage };
   }, [setErrorMessage]);
 
   return {
     error,
-    setError: setErrorMessage,
+    setError,
     clearError,
+    setErrorMessage,
     handleError
   };
 }
