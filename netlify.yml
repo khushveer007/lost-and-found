@@ -2,13 +2,20 @@ version: 1.0
 
 build:
   environment:
-    NODE_VERSION: 18
-    NPM_VERSION: 10
+    NODE_VERSION: 18.18.0
+    NPM_VERSION: 9.8.0
     GO_IMPORT_PATH: ""
-    GO_VERSION: "none"
-  command: npm run build
-  publish: dist
+    GO_VERSION: "off"
+  base: "/"
+  command: "npm run netlify-build"
+  publish: "dist"
+  ignore_command: "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF ./package.json"
 
 plugins:
   - package: "@netlify/plugin-nextjs"
     enabled: false
+  - package: "@netlify/plugin-gatsby"
+    enabled: false
+
+functions:
+  directory: "" # No serverless functions in this project
