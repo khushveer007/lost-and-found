@@ -86,6 +86,19 @@ export function ItemForm({ type, onSuccess, onCancel }: ItemFormProps) {
     return () => clearError();
   }, [name, description, category, location, date, clearError, formTouched]);
 
+  // Fix uploadItemImage by adding proper type safety
+  const handleImageUpload = async (file: File, userId: string): Promise<{success: boolean; url?: string; error?: string}> => {
+    try {
+      if (!file) return { success: false, error: 'No file provided' };
+      
+      // This is a placeholder - your actual implementation would replace this
+      const uploadResult = await uploadItemImage(file, userId);
+      return uploadResult;
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Upload failed' };
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormTouched(true)
@@ -126,17 +139,17 @@ export function ItemForm({ type, onSuccess, onCancel }: ItemFormProps) {
       }
       
       // Handle image upload if a file was selected
-      let imageUrl = ''
+      let finalImageUrl = '';
       if (imageFile) {
-        const uploadResult = await uploadItemImage(imageFile, user.id)
+        const uploadResult = await handleImageUpload(imageFile, user.id);
         if (!uploadResult.success) {
-          throw new Error(uploadResult.error || 'Failed to upload image')
+          throw new Error(uploadResult.error || 'Failed to upload image');
         }
         
-        imageUrl = uploadResult.url
+        finalImageUrl = uploadResult.url || '';
       } else if (imageUrl) {
         // If they provided a URL directly, use that
-        imageUrl = imageUrl
+        finalImageUrl = imageUrl;
       }
       
       const newItem = {
@@ -147,7 +160,7 @@ export function ItemForm({ type, onSuccess, onCancel }: ItemFormProps) {
         date,
         type,
         status: type === 'lost' ? 'Active' : 'Waiting for owner',
-        image_url: imageUrl || undefined,
+        image_url: finalImageUrl || undefined,
         user_id: user.id
       }
       

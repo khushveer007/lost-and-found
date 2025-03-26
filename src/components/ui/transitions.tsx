@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactNode } from "react";
+import React, { useState, useEffect, ReactNode, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface FadeProps {
@@ -100,7 +100,12 @@ export function AnimatePresence({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export function useAnimationOnMount(delay = 0) {
+/**
+ * Custom hook that applies animations when a component mounts
+ * @param delay Optional delay before setting visibility
+ * @returns Whether the component should be visible
+ */
+export function useAnimationOnMount(delay: number = 0): boolean {
   const [isVisible, setIsVisible] = useState(false);
   
   useEffect(() => {
@@ -112,4 +117,40 @@ export function useAnimationOnMount(delay = 0) {
   }, [delay]);
   
   return isVisible;
+}
+
+/**
+ * Custom hook that triggers animation when a component enters viewport
+ * @param options IntersectionObserver options
+ * @returns Ref to attach and visibility state
+ */
+export function useAnimateOnScroll(options = { threshold: 0.1 }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLElement | null>(null);
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setIsVisible(true);
+          if (ref.current) {
+            observer.unobserve(ref.current);
+          }
+        }
+      },
+      options
+    );
+    
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+    
+    return () => {
+      if (ref.current) {
+        observer.unobserve(ref.current);
+      }
+    };
+  }, [options]);
+  
+  return { ref, isVisible };
 }

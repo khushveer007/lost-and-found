@@ -31,7 +31,7 @@ export function SkipLink({ targetId, children = 'Skip to content' }: SkipLinkPro
   return (
     <a 
       href={`#${targetId}`}
-      className="absolute top-0 left-0 p-3 -translate-y-full focus:translate-y-0 bg-primary text-primary-foreground z-50 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+      className="absolute left-0 p-2 -translate-y-full focus:translate-y-0 bg-background z-50"
     >
       {children}
     </a>
@@ -45,16 +45,16 @@ export function FocusRing() {
   return (
     <style jsx global>{`
       :focus-visible {
-        outline: 2px solid hsl(var(--primary));
+        outline: 2px solid var(--focus-ring);
         outline-offset: 2px;
-      }
-      
-      /* Remove default focus styles for mouse users */
-      :focus:not(:focus-visible) {
-        outline: none;
       }
     `}</style>
   );
+}
+
+interface ScreenReaderAnnounceProps {
+  message: string;
+  assertive?: boolean;
 }
 
 /**
@@ -63,15 +63,11 @@ export function FocusRing() {
 export function ScreenReaderAnnounce({ 
   message,
   assertive = false
-}: { 
-  message: string; 
-  assertive?: boolean;
-}) {
-  // Uses aria-live to announce messages to screen readers
+}: ScreenReaderAnnounceProps) {
   return (
     <div 
-      className="sr-only" 
-      aria-live={assertive ? "assertive" : "polite"}
+      aria-live={assertive ? "assertive" : "polite"} 
+      className="sr-only"
     >
       {message}
     </div>

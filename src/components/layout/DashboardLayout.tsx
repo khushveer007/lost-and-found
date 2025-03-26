@@ -5,7 +5,13 @@ import { useNavigation } from '@/contexts/NavigationContext';
 import { CampusBanner } from "@/components/ui/campus-banner";
 
 interface DashboardLayoutProps {
-  children: ReactNode
+  children: ReactNode;
+}
+
+interface NavItem {
+  label: string;
+  path: string;
+  icon: JSX.Element;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -24,7 +30,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     return currentPage === pageName;
   }
   
-  const navItems = [
+  const navItems: NavItem[] = [
     { 
       label: "Dashboard", 
       path: "/dashboard", 
