@@ -2,19 +2,14 @@
 import { writeFileSync } from 'fs';
 
 try {
-  // Get environment variables
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
-  
-  // Create basic .env file for deployment
-  const envContent = `VITE_SUPABASE_URL=${supabaseUrl}
-VITE_SUPABASE_ANON_KEY=${supabaseAnonKey}
+  // Create basic .env file with empty values if needed
+  const envContent = `VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
 `;
 
   writeFileSync('.env', envContent);
-  console.log('Environment variables set up successfully!');
+  console.log('Environment variables template created. Please fill in the values.');
 } catch (error) {
   console.error('Error setting up environment variables:', error);
-  // Don't fail the build if this fails
-  process.exit(0);
+  process.exit(1);
 }
