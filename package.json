@@ -10,11 +10,9 @@
   "scripts": {
     "dev": "vite",
     "build": "node scripts/setup-env.js && tsc --skipLibCheck && vite build",
-    "netlify-build": "node scripts/netlify-env-check.js && node scripts/setup-env.js && tsc --skipLibCheck && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check": "node scripts/check-structure.js",
-    "postinstall": "node scripts/check-dependencies.js"
+    "check": "node scripts/check-structure.js"
   },
   "dependencies": {
     "@radix-ui/react-icons": "^1.3.2",

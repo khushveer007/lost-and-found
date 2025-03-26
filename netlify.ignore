@@ -1,7 +1,0 @@
-**/go.mod
-**/go.sum
-**/*.go
-**/*.py
-**/requirements.txt
-**/Pipfile
-**/Pipfile.lock
