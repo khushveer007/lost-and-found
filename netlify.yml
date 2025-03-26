@@ -6,6 +6,7 @@ build:
     NPM_VERSION: 9.8.0
     GO_IMPORT_PATH: ""
     GO_VERSION: "off"
+    PYTHON_VERSION: "3.9"
   base: "/"
   command: "npm run netlify-build"
   publish: "dist"

@@ -12,8 +12,8 @@
   GO_VERSION = "off"
   HUGO_VERSION = "off"
   PHP_VERSION = "off"
+  PYTHON_VERSION = "3.9"
   RUBY_VERSION = "off"
-  PYTHON_VERSION = "off"
 
 [[redirects]]
   from = "/*"
