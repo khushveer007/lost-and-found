@@ -1,5 +1,5 @@
-// Script to create an .env file from Netlify environment variables
-const fs = require('fs');
+// Convert from CommonJS to ES Module syntax
+import fs from 'fs';
 
 // Create .env file
 const envContent = `VITE_SUPABASE_URL=${process.env.VITE_SUPABASE_URL}

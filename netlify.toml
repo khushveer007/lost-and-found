@@ -3,6 +3,9 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  NODE_VERSION = "18" # Using a version that fully supports ES modules
+
 # Handle SPA routing
 [[redirects]]
   from = "/*"
