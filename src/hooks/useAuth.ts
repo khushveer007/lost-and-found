@@ -46,23 +46,23 @@ export function useAuth() {
     const checkUser = async () => {
       try {
         setLoading(true);
-        const { data, error } = await auth.getCurrentUser();
+        const result = await auth.getCurrentUser();
         
-        if (error) {
-          throw error;
+        if (!result.success) {
+          throw result.error;
         }
         
-        if (data?.user) {
+        if (result.user) {
           const userData: User = {
-            id: data.user.id,
-            email: data.user.email || '',
+            id: result.user.id,
+            email: result.user.email || '',
           };
           
           try {
             const { data: profileData } = await supabase
               .from('profiles')
               .select('first_name, last_name')
-              .eq('user_id', data.user.id)
+              .eq('user_id', result.user.id)
               .single();
               
             if (profileData) {
@@ -97,18 +97,14 @@ export function useAuth() {
     try {
       setLoading(true);
       setError(null);
-      const { data, error } = await auth.signIn(email, password);
+      const result = await auth.signIn(email, password);
       
-      if (error) {
-        throw error;
+      if (!result.success) {
+        throw result.error;
       }
       
-      if (data.user) {
-        // Auth state listener will handle setting the user
-        return { success: true };
-      } else {
-        return { success: false, error: "Login failed" };
-      }
+      // Auth state listener will handle setting the user
+      return { success: true };
     } catch (err: any) {
       setError(err.message || 'Sign in failed');
       return { success: false, error: err.message };
@@ -128,20 +124,20 @@ export function useAuth() {
       setError(null);
       
       // Create the user account
-      const { data, error } = await auth.signUp(email, password);
+      const result = await auth.signUp(email, password);
       
-      if (error) {
-        throw error;
+      if (!result.success) {
+        throw result.error;
       }
       
       // If first name and last name are provided, store them in a profiles table
-      if (data?.user && (firstName || lastName)) {
+      if ('user' in result && result.user && (firstName || lastName)) {
         // Check if profiles table exists and create profile
         try {
           await supabase
             .from('profiles')
             .insert({
-              user_id: data.user.id,
+              user_id: (result.user as { id: string }).id,
               first_name: firstName,
               last_name: lastName,
               created_at: new Date().toISOString()

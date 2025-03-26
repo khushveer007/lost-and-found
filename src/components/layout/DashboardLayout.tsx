@@ -1,4 +1,4 @@
-import { ReactNode } from "react"
+import React, { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
 import { useNavigation } from '@/contexts/NavigationContext';
@@ -11,7 +11,7 @@ interface DashboardLayoutProps {
 interface NavItem {
   label: string;
   path: string;
-  icon: JSX.Element;
+  icon: React.ReactElement;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
