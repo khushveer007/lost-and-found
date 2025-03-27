@@ -92,14 +92,10 @@ export const auth = {
   
   signIn: async (email: string, password: string) => {
     try {
-      // Use the persisting session option
+      // Sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
-        password,
-        options: {
-          // Set longer session duration (30 days)
-          persistSession: true
-        }
+        password
       })
       
       if (error) throw error
