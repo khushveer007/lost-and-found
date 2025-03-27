@@ -21,183 +21,178 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [authInitialized, setAuthInitialized] = useState(false);
 
-  // Initialize auth state
+  // Initialize auth state - Check session on mount
   useEffect(() => {
-    // Check active session on mount
-    const initializeAuth = async () => {
-      setLoading(true);
-      
+    const getInitialSession = async () => {
       try {
-        // Check if there is an active session
+        setLoading(true);
+        // Check if there's an active session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          
-          if (authUser) {
-            // Fetch user profile from profiles table
+          console.log("Active session found", session);
+          const { data } = await supabase.auth.getUser();
+          if (data.user) {
+            // Get user profile
             const { data: profile } = await supabase
               .from('profiles')
               .select('*')
-              .eq('id', authUser.id)
+              .eq('id', data.user.id)
               .single();
               
-            if (profile) {
-              setUser({
-                id: authUser.id,
-                email: authUser.email || '',
-                first_name: profile.first_name,
-                last_name: profile.last_name
-              });
-              setIsAuthenticated(true);
-            }
+            // Set user data
+            setUser({
+              id: data.user.id,
+              email: data.user.email || '',
+              first_name: profile?.first_name || '',
+              last_name: profile?.last_name || ''
+            });
+            setIsAuthenticated(true);
           }
         }
       } catch (error) {
-        console.error('Session initialization error:', error);
+        console.error("Session initialization error:", error);
       } finally {
         setLoading(false);
-        setAuthInitialized(true);
       }
     };
     
-    initializeAuth();
+    getInitialSession();
     
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Debug information to track auth events
-      console.log('Auth state changed:', event, !!session);
-      
-      if (session && session.user) {
-        try {
-          // Fetch user profile
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (profile) {
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state changed:", event, !!session);
+        
+        if (session) {
+          try {
+            // Get user profile
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+              
+            // Update user state
             setUser({
               id: session.user.id,
               email: session.user.email || '',
-              first_name: profile.first_name,
-              last_name: profile.last_name
+              first_name: profile?.first_name || '',
+              last_name: profile?.last_name || ''
             });
             setIsAuthenticated(true);
-          } else {
-            // Set basic user info even without profile
+          } catch (err) {
+            console.error("Error fetching user profile:", err);
+            // Still set basic user info even without profile
             setUser({
               id: session.user.id,
               email: session.user.email || '',
             });
             setIsAuthenticated(true);
           }
-        } catch (error) {
-          console.error('Error fetching profile:', error);
-          // Still set basic user info
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-          });
-          setIsAuthenticated(true);
+        } else {
+          // Clear user state when logged out
+          setUser(null);
+          setIsAuthenticated(false);
         }
-      } else {
-        // Clear user when session is not valid
-        setUser(null);
-        setIsAuthenticated(false);
+        
+        setLoading(false);
       }
-    });
+    );
     
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
+  // Sign up function
   const signUp = async (
     email: string, 
     password: string, 
     firstName?: string, 
     lastName?: string
   ): Promise<{ success: boolean, error?: string }> => {
-    return auth.signUp(email, password, firstName, lastName);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Call API service's signUp function
+      const result = await auth.signUp(email, password, firstName, lastName);
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to sign up");
+      }
+      
+      return { success: true };
+    } catch (err: any) {
+      console.error("Sign up error:", err);
+      setError(err.message || "Failed to sign up");
+      return { success: false, error: err.message || "Failed to sign up" };
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Sign in function
   const signIn = async (
     email: string, 
     password: string
   ): Promise<{ success: boolean, error?: string }> => {
     try {
+      setLoading(true);
+      setError(null);
+      
+      // Call API service's signIn function
       const result = await auth.signIn(email, password);
       
-      if (result.success) {
-        // Force a session check immediately after login
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        
-        if (authUser) {
-          // Fetch user profile
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', authUser.id)
-            .single();
-            
-          if (profile) {
-            setUser({
-              id: authUser.id,
-              email: authUser.email || '',
-              first_name: profile.first_name,
-              last_name: profile.last_name
-            });
-          } else {
-            setUser({
-              id: authUser.id,
-              email: authUser.email || '',
-            });
-          }
-          setIsAuthenticated(true);
-        }
+      if (!result.success) {
+        throw new Error(result.error || "Failed to sign in");
       }
       
-      return result;
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      return { success: false, error: error.message };
+      // The auth state listener will handle setting the user
+      return { success: true };
+    } catch (err: any) {
+      console.error("Sign in error:", err);
+      setError(err.message || "Failed to sign in");
+      return { success: false, error: err.message || "Failed to sign in" };
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Sign out function
   const signOut = async (): Promise<void> => {
     try {
+      setLoading(true);
       await auth.signOut();
       setUser(null);
       setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Sign out error:', error);
+    } catch (err: any) {
+      console.error("Sign out error:", err);
+      setError(err.message || "Failed to sign out");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Check email verification status
   const checkEmailVerification = async (email: string): Promise<boolean> => {
     try {
-      // This is a simplified implementation - in real apps you'd check via API
+      // This is a simplified implementation
       const { data } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          shouldCreateUser: false
-        }
+        options: { shouldCreateUser: false }
       });
       
-      if (!data || !data.user) return false;
-      
-      const user = data.user as any;
-      return user.email_confirmed_at != null || user.confirmed_at != null;
+      return data?.user?.email_confirmed_at != null;
     } catch (error) {
-      console.error('Error checking email verification:', error);
+      console.error("Error checking email verification:", error);
       return false;
     }
   };
 
+  // Resend verification email
   const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error } = await supabase.auth.resend({
@@ -206,10 +201,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (error) throw error;
-      
       return { success: true };
     } catch (err: any) {
-      console.error('Error resending verification email:', err);
+      console.error("Error resending verification email:", err);
       return { success: false, error: err.message };
     }
   };
@@ -218,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{ 
       user, 
       isAuthenticated, 
-      loading: loading || !authInitialized, // Ensure auth is initialized before pages can show
+      loading, 
       error,
       signUp, 
       signIn, 

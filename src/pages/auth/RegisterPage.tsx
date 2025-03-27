@@ -30,8 +30,15 @@ export function RegisterPage() {
   const [authError, setAuthError] = useState<string | null>(null)
   const [authSuccess, setAuthSuccess] = useState(false)
   
-  const { signUp } = useAuth()
+  const { signUp, isAuthenticated } = useAuth()
   const { navigateTo } = useNavigation()
+
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigateTo('dashboard');
+    }
+  }, [isAuthenticated, navigateTo]);
 
   // Debounced field validation for better performance
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,32 +157,36 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    console.log("Registration form submitted");
     setRegistrationStage('validating')
+    
     if (!validateForm()) {
+      console.log("Form validation failed");
       setRegistrationStage('idle')
       return
     }
     
-    setIsSubmitting(true)
-    setAuthError(null)
-    
     try {
+      setIsSubmitting(true)
+      setAuthError(null)
+      
+      console.log("Creating account...");
       setRegistrationStage('creating-account')
+      
       const result = await signUp(email, password, firstName, lastName)
       
       if (!result.success) {
+        console.error("Registration failed:", result.error);
         throw new Error(result.error || "Failed to sign up")
       }
       
+      console.log("Registration successful");
       setAuthSuccess(true)
       setRegistrationStage('verification-sent')
-      
-      // Don't auto-navigate - let the user see the verification message
-      // navigateTo('login') 
     } catch (error: any) {
+      console.error("Registration error:", error);
       setAuthError(error.message || "An unexpected error occurred")
       setRegistrationStage('idle')
-      console.error(error)
     } finally {
       setIsSubmitting(false)
     }
@@ -248,6 +259,7 @@ export function RegisterPage() {
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
                       className={errors.firstName ? "border-destructive" : ""}
                       autoComplete="given-name"
+                      disabled={isSubmitting}
                     />
                   </FormControl>
                   {errors.firstName && <FormMessage>{errors.firstName}</FormMessage>}
@@ -262,6 +274,7 @@ export function RegisterPage() {
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
                       className={errors.lastName ? "border-destructive" : ""}
                       autoComplete="family-name"
+                      disabled={isSubmitting}
                     />
                   </FormControl>
                   {errors.lastName && <FormMessage>{errors.lastName}</FormMessage>}
@@ -279,6 +292,7 @@ export function RegisterPage() {
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     className={errors.email ? "border-destructive" : ""}
                     autoComplete="email"
+                    disabled={isSubmitting}
                   />
                 </FormControl>
                 {errors.email && <FormMessage>{errors.email}</FormMessage>}
@@ -294,6 +308,7 @@ export function RegisterPage() {
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     className={errors.password ? "border-destructive" : ""}
                     autoComplete="new-password"
+                    disabled={isSubmitting}
                   />
                 </FormControl>
                 {errors.password && <FormMessage>{errors.password}</FormMessage>}
@@ -309,6 +324,7 @@ export function RegisterPage() {
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                     className={errors.confirmPassword ? "border-destructive" : ""}
                     autoComplete="new-password"
+                    disabled={isSubmitting}
                   />
                 </FormControl>
                 {errors.confirmPassword && <FormMessage>{errors.confirmPassword}</FormMessage>}
@@ -337,6 +353,7 @@ export function RegisterPage() {
                 type="button"
                 onClick={() => navigateTo('login')}
                 className="text-primary hover:underline"
+                disabled={isSubmitting}
               >
                 Log in
               </button>
