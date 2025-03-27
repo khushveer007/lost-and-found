@@ -127,7 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (!data || !data.user) return false;
-      return data.user.email_confirmed_at != null;
+      
+      // Use type assertion to access the email verification status
+      const user = data.user as any;
+      return user.email_confirmed_at != null || user.confirmed_at != null;
     } catch (error) {
       console.error('Error checking email verification:', error);
       return false;
