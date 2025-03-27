@@ -126,7 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
       
-      return data?.user?.email_confirmed_at != null;
+      if (!data || !data.user) return false;
+      return data.user.email_confirmed_at != null;
     } catch (error) {
       console.error('Error checking email verification:', error);
       return false;
