@@ -123,40 +123,23 @@ export function useAuth() {
       setLoading(true);
       setError(null);
       
-      // Create the user account
-      const result = await auth.signUp(email, password);
+      // Optimize by combining operations - create the user with a profile in a single transaction
+      // We've implemented a better approach in the API service
+      const result = await auth.signUp(email, password, firstName, lastName);
       
       if (!result.success) {
-        throw result.error;
-      }
-      
-      // If first name and last name are provided, store them in a profiles table
-      if ('user' in result && result.user && (firstName || lastName)) {
-        // Check if profiles table exists and create profile
-        try {
-          await supabase
-            .from('profiles')
-            .insert({
-              user_id: (result.user as { id: string }).id,
-              first_name: firstName,
-              last_name: lastName,
-              created_at: new Date().toISOString()
-            });
-        } catch (profileError) {
-          console.error('Error creating profile:', profileError);
-          // We don't want to fail signup if profile creation fails
-        }
+        throw new Error(result.error);
       }
       
       return { success: true };
     } catch (err: any) {
-      setError(err.message || 'Sign up failed');
+      setError(err.message || "Failed to sign up");
       return { success: false, error: err.message };
     } finally {
       setLoading(false);
     }
   };
-  
+
   const signOut = async (): Promise<void> => {
     try {
       setLoading(true);

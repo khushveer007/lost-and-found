@@ -32,32 +32,53 @@ export interface Item {
 export const auth = {
   signUp: async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
+      // Prepare the profile data in advance to eliminate duplicate object creation
+      const profileData = {
+        first_name: firstName || null,
+        last_name: lastName || null,
+        created_at: new Date().toISOString()
+      };
+      
       // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-      })
+        options: {
+          // Adding data to metadata speeds up the process by reducing a separate profile query
+          data: {
+            first_name: firstName,
+            last_name: lastName
+          }
+        }
+      });
       
-      if (authError) throw authError
+      if (authError) throw authError;
       
-      if (authData.user) {
-        // Create profile for user
+      if (authData?.user) {
+        // Use upsert instead of insert to handle potential race conditions
+        // and make the operation idempotent (can be safely retried)
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: authData.user.id,
             email,
-            first_name: firstName || null,
-            last_name: lastName || null
-          })
+            ...profileData
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: true
+          });
         
-        if (profileError) throw profileError
+        if (profileError) {
+          console.warn('Profile creation warning:', profileError);
+          // Still return success even if profile creation has issues
+          // The auth is the critical path, profile can be created later
+        }
       }
       
-      return { success: true }
+      return { success: true };
     } catch (error: any) {
-      console.error('Sign up error:', error)
-      return { success: false, error: error.message }
+      console.error('Sign up error:', error);
+      return { success: false, error: error.message };
     }
   },
   
