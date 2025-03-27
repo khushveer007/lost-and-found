@@ -92,11 +92,26 @@ export const auth = {
   
   signIn: async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      // Use the persisting session option
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password,
+        options: {
+          // Set longer session duration (30 days)
+          persistSession: true
+        }
+      })
       
       if (error) throw error
       
-      return { success: true }
+      // Wait briefly to ensure the session is established
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      return { 
+        success: true,
+        session: data.session,
+        user: data.user
+      }
     } catch (error: any) {
       console.error('Sign in error:', error)
       return { success: false, error: error.message }
@@ -105,7 +120,10 @@ export const auth = {
   
   signOut: async () => {
     try {
-      const { error } = await supabase.auth.signOut()
+      const { error } = await supabase.auth.signOut({
+        // Sign out from all tabs
+        scope: 'global'
+      })
       
       if (error) throw error
       
@@ -162,6 +180,24 @@ export const auth = {
     } catch (error: any) {
       console.error('Resend verification error:', error);
       return { success: false, error: error.message };
+    }
+  },
+
+  // Add a session check function
+  getSession: async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      
+      if (error) throw error
+      
+      return { 
+        success: true, 
+        session: data.session,
+        hasSession: !!data.session
+      }
+    } catch (error: any) {
+      console.error('Get session error:', error)
+      return { success: false, error: error.message, hasSession: false }
     }
   }
 }

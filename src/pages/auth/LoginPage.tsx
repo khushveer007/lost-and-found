@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { AuthLayout } from "@/components/layout/AuthLayout"
 import { Input } from "@/components/ui/input"
@@ -22,9 +22,17 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const [authSuccess, setAuthSuccess] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
   
-  const { signIn } = useAuth()
+  const { signIn, isAuthenticated } = useAuth()
   const { navigateTo } = useNavigation();
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigateTo('dashboard');
+    }
+  }, [isAuthenticated, navigateTo]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -60,10 +68,12 @@ export function LoginPage() {
         setAuthError(result.error || "Failed to sign in")
       } else {
         setAuthSuccess(true)
-        // Navigate to dashboard after successful login
+        setRedirecting(true)
+        
+        // Wait a bit to show success message before navigating
         setTimeout(() => {
           navigateTo('dashboard');
-        }, 1500);
+        }, 1000);
       }
     } catch (error) {
       setAuthError("An unexpected error occurred")
@@ -94,7 +104,11 @@ export function LoginPage() {
           <Toast variant="success" className="mb-4">
             <div>
               <ToastTitle>Success!</ToastTitle>
-              <ToastDescription>You have successfully logged in.</ToastDescription>
+              <ToastDescription>
+                {redirecting 
+                  ? "You have successfully logged in. Redirecting to dashboard..." 
+                  : "You have successfully logged in."}
+              </ToastDescription>
             </div>
           </Toast>
         )}
@@ -139,9 +153,9 @@ export function LoginPage() {
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isSubmitting}
+            disabled={isSubmitting || redirecting}
           >
-            {isSubmitting ? "Logging in..." : "Log in"}
+            {isSubmitting ? "Logging in..." : redirecting ? "Redirecting..." : "Log in"}
           </Button>
           
           <div className="text-center text-sm">
@@ -150,6 +164,7 @@ export function LoginPage() {
               type="button"
               onClick={() => navigateTo('register')}
               className="text-primary hover:underline"
+              disabled={redirecting}
             >
               Sign up
             </button>

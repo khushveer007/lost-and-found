@@ -8,6 +8,7 @@ import ProfilePage from './pages/dashboard/ProfilePage'
 import { Button } from '@/components/ui/button'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { NavigationProvider } from '@/contexts/NavigationContext'
+import { initSessionWatcher } from '@/utils/session-util';
 
 function App() {
   // Set document title
@@ -26,6 +27,12 @@ function App() {
     console.log(`Navigating to: ${page}`); // Debug navigation
     setCurrentPage(page);
   };
+  
+  // Initialize session watcher for debugging
+  useEffect(() => {
+    const cleanup = initSessionWatcher();
+    return cleanup;
+  }, []);
   
   // This is a simple demonstration - in a real app, you'd use React Router
   const renderPage = () => {

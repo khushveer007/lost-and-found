@@ -1,26 +1,64 @@
-import { ReactNode } from "react"
+import { ReactNode, useEffect } from "react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useNavigation } from "@/contexts/NavigationContext"
 import { Button } from "@/components/ui/button"
+import { useState } from "react"
 
 interface ProtectedRouteProps {
-  children: ReactNode
-  fallback?: ReactNode
+  children: ReactNode;
+  fallback?: ReactNode;
+  redirectAfterMs?: number;
 }
 
-export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
-  const { isAuthenticated, loading } = useAuth()
+export function ProtectedRoute({ children, fallback, redirectAfterMs = 0 }: ProtectedRouteProps) {
+  const { isAuthenticated, loading, user } = useAuth()
   const { navigateTo } = useNavigation()
+  const [showAuthMessage, setShowAuthMessage] = useState(false)
   
+  // Prevent flashing unauthorized message during loading
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    // Only show auth message if still not authenticated after a short delay
+    if (!loading && !isAuthenticated) {
+      timer = setTimeout(() => {
+        setShowAuthMessage(true);
+      }, 300); // Small delay to prevent flash
+    } else {
+      // Clear timeout if we become authenticated
+      setShowAuthMessage(false);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [loading, isAuthenticated]);
+  
+  // Show loading state while auth is initializing
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+        <p className="mt-4 text-muted-foreground">Checking authentication...</p>
       </div>
     )
   }
   
-  if (!isAuthenticated) {
+  // Show children if authenticated
+  if (isAuthenticated && user) {
+    console.log("User is authenticated, showing protected content", user);
+    return <>{children}</>
+  }
+  
+  // Show auth message if not authenticated and not loading
+  if (showAuthMessage) {
+    // Auto-redirect after delay if specified
+    if (redirectAfterMs > 0) {
+      setTimeout(() => {
+        navigateTo('login');
+      }, redirectAfterMs);
+    }
+    
     return fallback || (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <div className="bg-background border rounded-lg p-8 max-w-md w-full">
@@ -48,5 +86,10 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     )
   }
   
-  return <>{children}</>
+  // Return an empty loading state if auth message isn't ready to show yet
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+    </div>
+  );
 }
