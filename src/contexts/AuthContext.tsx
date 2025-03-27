@@ -5,9 +5,12 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
+  error: string | null;
   signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<{ success: boolean, error?: string }>;
   signIn: (email: string, password: string) => Promise<{ success: boolean, error?: string }>;
   signOut: () => Promise<void>;
+  checkEmailVerification: (email: string) => Promise<boolean>;
+  resendVerificationEmail: (email: string) => Promise<{ success: boolean, error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check active session
@@ -111,14 +115,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false);
   };
 
+  const checkEmailVerification = async (email: string): Promise<boolean> => {
+    try {
+      // This is a simplified implementation - in a real app, 
+      // you'd have a server API to check if email is verified
+      const { data } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false
+        }
+      });
+      
+      if (!data || !data.user) return false;
+      
+      // Use type assertion to access the email verification status
+      const user = data.user as any;
+      return user.email_confirmed_at != null || user.confirmed_at != null;
+    } catch (error) {
+      console.error('Error checking email verification:', error);
+      return false;
+    }
+  };
+
+  const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error resending verification email:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       isAuthenticated, 
       loading, 
+      error,
       signUp, 
       signIn, 
-      signOut 
+      signOut,
+      checkEmailVerification,
+      resendVerificationEmail
     }}>
       {children}
     </AuthContext.Provider>

@@ -13,6 +13,7 @@ import { Toast, ToastTitle, ToastDescription } from "@/components/ui/toast"
 import { useAuth } from "@/contexts/AuthContext"
 import { useNavigation } from '@/contexts/NavigationContext'
 import { debounce } from '@/utils/performance'
+import { EmailVerificationAlert } from "@/components/auth/EmailVerificationAlert"
 
 export function RegisterPage() {
   // Form state
@@ -25,7 +26,7 @@ export function RegisterPage() {
   // UI state
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [registrationStage, setRegistrationStage] = useState<'idle' | 'validating' | 'creating-account' | 'creating-profile'>('idle')
+  const [registrationStage, setRegistrationStage] = useState<'idle' | 'validating' | 'creating-account' | 'verification-sent'>('idle')
   const [authError, setAuthError] = useState<string | null>(null)
   const [authSuccess, setAuthSuccess] = useState(false)
   
@@ -167,14 +168,16 @@ export function RegisterPage() {
       }
       
       setAuthSuccess(true)
-      // Navigate immediately rather than waiting
-      navigateTo('login')
+      setRegistrationStage('verification-sent')
+      
+      // Don't auto-navigate - let the user see the verification message
+      // navigateTo('login') 
     } catch (error: any) {
       setAuthError(error.message || "An unexpected error occurred")
+      setRegistrationStage('idle')
       console.error(error)
     } finally {
       setIsSubmitting(false)
-      setRegistrationStage('idle')
     }
   }
 
@@ -195,6 +198,11 @@ export function RegisterPage() {
           <p className="text-muted-foreground">Enter your information to get started</p>
         </div>
         
+        {/* Email verification notification */}
+        {registrationStage === 'verification-sent' && (
+          <EmailVerificationAlert email={email} />
+        )}
+        
         {authError && (
           <Toast variant="destructive" className="mb-4">
             <div>
@@ -204,7 +212,7 @@ export function RegisterPage() {
           </Toast>
         )}
         
-        {authSuccess && (
+        {authSuccess && registrationStage !== 'verification-sent' && (
           <Toast variant="success" className="mb-4">
             <div>
               <ToastTitle>Success!</ToastTitle>
@@ -215,114 +223,126 @@ export function RegisterPage() {
           </Toast>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <FormSection>
-            <div className="grid grid-cols-2 gap-4">
+        {registrationStage === 'verification-sent' ? (
+          <div className="mt-6 space-y-4">
+            <p className="text-center">
+              Need to access your account? Go to the login page once you've verified your email.
+            </p>
+            <Button 
+              onClick={() => navigateTo('login')}
+              className="w-full"
+            >
+              Go to Login
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormSection>
+              <div className="grid grid-cols-2 gap-4">
+                <FormItem>
+                  <FormLabel error={!!errors.firstName}>First name</FormLabel>
+                  <FormControl>
+                    <Input
+                      id="firstName"
+                      value={firstName}
+                      onChange={(e) => handleInputChange('firstName', e.target.value)}
+                      className={errors.firstName ? "border-destructive" : ""}
+                      autoComplete="given-name"
+                    />
+                  </FormControl>
+                  {errors.firstName && <FormMessage>{errors.firstName}</FormMessage>}
+                </FormItem>
+                
+                <FormItem>
+                  <FormLabel error={!!errors.lastName}>Last name</FormLabel>
+                  <FormControl>
+                    <Input
+                      id="lastName"
+                      value={lastName}
+                      onChange={(e) => handleInputChange('lastName', e.target.value)}
+                      className={errors.lastName ? "border-destructive" : ""}
+                      autoComplete="family-name"
+                    />
+                  </FormControl>
+                  {errors.lastName && <FormMessage>{errors.lastName}</FormMessage>}
+                </FormItem>
+              </div>
+              
               <FormItem>
-                <FormLabel error={!!errors.firstName}>First name</FormLabel>
+                <FormLabel error={!!errors.email}>Email</FormLabel>
                 <FormControl>
                   <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    className={errors.firstName ? "border-destructive" : ""}
-                    autoComplete="given-name"
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    value={email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={errors.email ? "border-destructive" : ""}
+                    autoComplete="email"
                   />
                 </FormControl>
-                {errors.firstName && <FormMessage>{errors.firstName}</FormMessage>}
+                {errors.email && <FormMessage>{errors.email}</FormMessage>}
               </FormItem>
               
               <FormItem>
-                <FormLabel error={!!errors.lastName}>Last name</FormLabel>
+                <FormLabel error={!!errors.password}>Password</FormLabel>
                 <FormControl>
                   <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    className={errors.lastName ? "border-destructive" : ""}
-                    autoComplete="family-name"
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className={errors.password ? "border-destructive" : ""}
+                    autoComplete="new-password"
                   />
                 </FormControl>
-                {errors.lastName && <FormMessage>{errors.lastName}</FormMessage>}
+                {errors.password && <FormMessage>{errors.password}</FormMessage>}
               </FormItem>
-            </div>
+              
+              <FormItem>
+                <FormLabel error={!!errors.confirmPassword}>Confirm Password</FormLabel>
+                <FormControl>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    className={errors.confirmPassword ? "border-destructive" : ""}
+                    autoComplete="new-password"
+                  />
+                </FormControl>
+                {errors.confirmPassword && <FormMessage>{errors.confirmPassword}</FormMessage>}
+              </FormItem>
+            </FormSection>
             
-            <FormItem>
-              <FormLabel error={!!errors.email}>Email</FormLabel>
-              <FormControl>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  value={email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={errors.email ? "border-destructive" : ""}
-                  autoComplete="email"
-                />
-              </FormControl>
-              {errors.email && <FormMessage>{errors.email}</FormMessage>}
-            </FormItem>
-            
-            <FormItem>
-              <FormLabel error={!!errors.password}>Password</FormLabel>
-              <FormControl>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  className={errors.password ? "border-destructive" : ""}
-                  autoComplete="new-password"
-                />
-              </FormControl>
-              {errors.password && <FormMessage>{errors.password}</FormMessage>}
-            </FormItem>
-            
-            <FormItem>
-              <FormLabel error={!!errors.confirmPassword}>Confirm Password</FormLabel>
-              <FormControl>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  className={errors.confirmPassword ? "border-destructive" : ""}
-                  autoComplete="new-password"
-                />
-              </FormControl>
-              {errors.confirmPassword && <FormMessage>{errors.confirmPassword}</FormMessage>}
-            </FormItem>
-          </FormSection>
-          
-          <Button 
-            type="submit" 
-            className="w-full relative" 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <span className="opacity-0">Create account</span>
-                <span className="absolute inset-0 flex items-center justify-center">
-                  {registrationStage === 'validating' && "Validating..."}
-                  {registrationStage === 'creating-account' && "Creating Account..."}
-                  {registrationStage === 'creating-profile' && "Setting Up Profile..."}
-                  {registrationStage === 'idle' && "Processing..."}
-                </span>
-              </>
-            ) : "Create account"}
-          </Button>
-          
-          <div className="text-center text-sm">
-            Already have an account?{" "}
-            <button 
-              type="button"
-              onClick={() => navigateTo('login')}
-              className="text-primary hover:underline"
+            <Button 
+              type="submit" 
+              className="w-full relative" 
+              disabled={isSubmitting}
             >
-              Log in
-            </button>
-          </div>
-        </form>
+              {isSubmitting ? (
+                <>
+                  <span className="opacity-0">Create account</span>
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    {registrationStage === 'validating' && "Validating..."}
+                    {registrationStage === 'creating-account' && "Creating Account..."}
+                  </span>
+                </>
+              ) : "Create account"}
+            </Button>
+            
+            <div className="text-center text-sm">
+              Already have an account?{" "}
+              <button 
+                type="button"
+                onClick={() => navigateTo('login')}
+                className="text-primary hover:underline"
+              >
+                Log in
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </AuthLayout>
   )

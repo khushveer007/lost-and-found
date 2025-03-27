@@ -39,7 +39,7 @@ export const auth = {
         created_at: new Date().toISOString()
       };
       
-      // Create auth user
+      // Create auth user with email confirmation
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -48,11 +48,15 @@ export const auth = {
           data: {
             first_name: firstName,
             last_name: lastName
-          }
+          },
+          emailRedirectTo: window.location.origin + '/auth/callback', // Add this for better redirect handling
         }
       });
       
       if (authError) throw authError;
+      
+      // Check if email was sent
+      const emailSent = !!authData?.user;
       
       if (authData?.user) {
         // Use upsert instead of insert to handle potential race conditions
@@ -75,10 +79,14 @@ export const auth = {
         }
       }
       
-      return { success: true };
+      return { 
+        success: true, 
+        emailSent,
+        user: authData?.user
+      };
     } catch (error: any) {
       console.error('Sign up error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, emailSent: false };
     }
   },
   
@@ -118,6 +126,42 @@ export const auth = {
     } catch (error: any) {
       console.error('Get current user error:', error)
       return { success: false, error: error.message }
+    }
+  },
+
+  // Check if a user's email is verified
+  checkEmailVerified: async (email: string) => {
+    try {
+      // This is an approximation - Supabase doesn't provide a direct way to check
+      // email verification status without signing in
+      const { data, error } = await supabase.auth.getUser();
+      
+      if (error) throw error;
+      
+      return { 
+        success: true, 
+        verified: data?.user?.email === email && data?.user?.email_confirmed_at != null
+      };
+    } catch (error: any) {
+      console.error('Check email verification error:', error);
+      return { success: false, error: error.message, verified: false };
+    }
+  },
+  
+  // Resend verification email
+  resendVerificationEmail: async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      
+      if (error) throw error;
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Resend verification error:', error);
+      return { success: false, error: error.message };
     }
   }
 }
