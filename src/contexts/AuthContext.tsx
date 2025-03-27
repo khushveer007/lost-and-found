@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: { shouldCreateUser: false }
       });
       
-      return data?.user?.email_confirmed_at != null;
+      return !!data?.user && data.user.email_confirmed_at != null;
     } catch (error) {
       console.error("Error checking email verification:", error);
       return false;
