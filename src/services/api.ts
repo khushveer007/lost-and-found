@@ -4,14 +4,19 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
+// Validate Supabase credentials
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing Supabase credentials. Make sure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file.');
+}
+
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Type definitions
 export interface User {
-  id: string
-  email: string
-  first_name?: string
-  last_name?: string
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 export interface Item {
@@ -32,114 +37,110 @@ export interface Item {
 export const auth = {
   signUp: async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
-      // Prepare the profile data in advance to eliminate duplicate object creation
-      const profileData = {
-        first_name: firstName || null,
-        last_name: lastName || null,
-        created_at: new Date().toISOString()
-      };
+      console.log('Signing up user:', email);
       
-      // Create auth user with email confirmation
+      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          // Adding data to metadata speeds up the process by reducing a separate profile query
           data: {
             first_name: firstName,
             last_name: lastName
-          },
-          emailRedirectTo: window.location.origin + '/auth/callback', // Add this for better redirect handling
+          }
         }
       });
       
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Auth error during signup:', authError);
+        throw authError;
+      }
       
-      // Check if email was sent
-      const emailSent = !!authData?.user;
+      if (!authData?.user?.id) {
+        throw new Error('No user ID returned from signup');
+      }
       
-      if (authData?.user) {
-        // Use upsert instead of insert to handle potential race conditions
-        // and make the operation idempotent (can be safely retried)
+      console.log('User created successfully, creating profile');
+      
+      // Create profile for user
+      try {
         const { error: profileError } = await supabase
           .from('profiles')
-          .upsert({
+          .insert({
             id: authData.user.id,
             email,
-            ...profileData
-          }, {
-            onConflict: 'id',
-            ignoreDuplicates: true
+            first_name: firstName || null,
+            last_name: lastName || null,
+            created_at: new Date().toISOString()
           });
         
         if (profileError) {
           console.warn('Profile creation warning:', profileError);
-          // Still return success even if profile creation has issues
-          // The auth is the critical path, profile can be created later
         }
+      } catch (profileErr) {
+        console.warn('Failed to create profile, but auth succeeded:', profileErr);
+        // We don't throw here since the auth part succeeded
       }
       
-      return { 
-        success: true, 
-        emailSent,
-        user: authData?.user
-      };
+      return { success: true, user: authData.user };
     } catch (error: any) {
       console.error('Sign up error:', error);
-      return { success: false, error: error.message, emailSent: false };
+      return { success: false, error: error.message || 'Failed to sign up' };
     }
   },
   
   signIn: async (email: string, password: string) => {
     try {
-      // Sign in with email and password
-      const { data, error } = await supabase.auth.signInWithPassword({ 
-        email, 
-        password
-      })
+      console.log('Signing in user:', email);
       
-      if (error) throw error
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
-      // Wait briefly to ensure the session is established
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (error) {
+        console.error('Sign in error:', error);
+        throw error;
+      }
+      
+      if (!data.session || !data.user) {
+        throw new Error('No session or user returned from login');
+      }
+      
+      console.log('User signed in successfully');
       
       return { 
         success: true,
-        session: data.session,
-        user: data.user
-      }
+        user: data.user,
+        session: data.session
+      };
     } catch (error: any) {
-      console.error('Sign in error:', error)
-      return { success: false, error: error.message }
+      console.error('Sign in error:', error);
+      return { success: false, error: error.message || 'Failed to sign in' };
     }
   },
   
   signOut: async () => {
     try {
-      const { error } = await supabase.auth.signOut({
-        // Sign out from all tabs
-        scope: 'global'
-      })
+      console.log('Signing out user');
+      const { error } = await supabase.auth.signOut();
       
-      if (error) throw error
+      if (error) throw error;
       
-      return { success: true }
+      return { success: true };
     } catch (error: any) {
-      console.error('Sign out error:', error)
-      return { success: false, error: error.message }
+      console.error('Sign out error:', error);
+      return { success: false, error: error.message };
     }
   },
   
   getCurrentUser: async () => {
     try {
-      const { data, error } = await supabase.auth.getUser()
+      const { data, error } = await supabase.auth.getUser();
       
-      if (error) throw error
+      if (error) throw error;
       
-      return { success: true, user: data.user }
+      return { success: true, user: data.user };
     } catch (error: any) {
-      console.error('Get current user error:', error)
-      return { success: false, error: error.message }
+      console.error('Get current user error:', error);
+      return { success: false, error: error.message };
     }
   },
 

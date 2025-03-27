@@ -11,28 +11,29 @@ import {
 } from "@/components/ui/form"
 import { Toast, ToastTitle, ToastDescription } from "@/components/ui/toast"
 import { useAuth } from "@/contexts/AuthContext"
-import { Link } from '@/components/ui/link';
 import { useNavigation } from '@/contexts/NavigationContext';
-import { NavigationButton } from '@/components/ui/navigation-button';
 
 export function LoginPage() {
+  // Form state
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  // UI state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const [authSuccess, setAuthSuccess] = useState(false)
-  const [redirecting, setRedirecting] = useState(false)
   
-  const { signIn, isAuthenticated } = useAuth()
+  const { signIn, isAuthenticated, loading: authLoading } = useAuth()
   const { navigateTo } = useNavigation();
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !authLoading) {
+      console.log("User already authenticated, redirecting to dashboard");
       navigateTo('dashboard');
     }
-  }, [isAuthenticated, navigateTo]);
+  }, [isAuthenticated, authLoading, navigateTo]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -58,27 +59,29 @@ export function LoginPage() {
     
     if (!validateForm()) return
     
-    setIsSubmitting(true)
-    setAuthError(null)
-    
     try {
+      setIsSubmitting(true)
+      setAuthError(null)
+      
+      console.log("Attempting to sign in with email:", email);
       const result = await signIn(email, password)
       
       if (!result.success) {
+        console.error("Login failed:", result.error);
         setAuthError(result.error || "Failed to sign in")
+        setIsSubmitting(false)
       } else {
+        console.log("Login successful, setting success state");
         setAuthSuccess(true)
-        setRedirecting(true)
         
-        // Wait a bit to show success message before navigating
+        // Set a timeout to navigate to dashboard
         setTimeout(() => {
           navigateTo('dashboard');
         }, 1000);
       }
-    } catch (error) {
-      setAuthError("An unexpected error occurred")
-      console.error(error)
-    } finally {
+    } catch (error: any) {
+      console.error("Unexpected login error:", error);
+      setAuthError(error.message || "An unexpected error occurred")
       setIsSubmitting(false)
     }
   }
@@ -104,11 +107,7 @@ export function LoginPage() {
           <Toast variant="success" className="mb-4">
             <div>
               <ToastTitle>Success!</ToastTitle>
-              <ToastDescription>
-                {redirecting 
-                  ? "You have successfully logged in. Redirecting to dashboard..." 
-                  : "You have successfully logged in."}
-              </ToastDescription>
+              <ToastDescription>You have successfully logged in. Redirecting to dashboard...</ToastDescription>
             </div>
           </Toast>
         )}
@@ -125,6 +124,7 @@ export function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={errors.email ? "border-destructive" : ""}
+                  disabled={isSubmitting || authSuccess}
                 />
               </FormControl>
               {errors.email && <FormMessage>{errors.email}</FormMessage>}
@@ -144,6 +144,7 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={errors.password ? "border-destructive" : ""}
+                  disabled={isSubmitting || authSuccess}
                 />
               </FormControl>
               {errors.password && <FormMessage>{errors.password}</FormMessage>}
@@ -153,9 +154,9 @@ export function LoginPage() {
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isSubmitting || redirecting}
+            disabled={isSubmitting || authSuccess}
           >
-            {isSubmitting ? "Logging in..." : redirecting ? "Redirecting..." : "Log in"}
+            {isSubmitting ? "Logging in..." : authSuccess ? "Redirecting..." : "Log in"}
           </Button>
           
           <div className="text-center text-sm">
@@ -164,7 +165,7 @@ export function LoginPage() {
               type="button"
               onClick={() => navigateTo('register')}
               className="text-primary hover:underline"
-              disabled={redirecting}
+              disabled={isSubmitting || authSuccess}
             >
               Sign up
             </button>

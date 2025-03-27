@@ -34,7 +34,7 @@ export const checkSessionPersistence = async (): Promise<{
  * Watches for session changes and logs them for debugging
  */
 export const initSessionWatcher = () => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return () => {};
 
   // Watch for auth state changes
   const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -43,13 +43,8 @@ export const initSessionWatcher = () => {
 
   // Check for session issues periodically
   const intervalId = setInterval(async () => {
-    const { hasLocalStorage, hasSession } = await checkSessionPersistence();
-    if (!hasLocalStorage) {
-      console.warn('[Session Warning] LocalStorage not available - sessions will not persist');
-    }
-    if (!hasSession) {
-      console.info('[Session Info] No active session found');
-    }
+    const { data } = await supabase.auth.getSession();
+    console.info('[Session Info] Session check:', !!data.session);
   }, 30000); // Check every 30 seconds
 
   // Cleanup function
