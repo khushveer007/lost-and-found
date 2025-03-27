@@ -185,7 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: { shouldCreateUser: false }
       });
       
-      return !!data?.user && data.user.email_confirmed_at != null;
+      // Use type assertion to access email_confirmed_at
+      return !!data?.user && (data.user as any).email_confirmed_at != null;
     } catch (error) {
       console.error("Error checking email verification:", error);
       return false;
