@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/form"
 import { Toast, ToastTitle, ToastDescription } from "@/components/ui/toast"
 import { useAuth } from "@/contexts/AuthContext"
+import { profiles } from "@/services/api"
 import { useItems } from "@/hooks/useItems"
 import { useErrorHandler } from "@/hooks/useErrorHandler"
 import { validateForm, validationRules } from "@/utils/testUtils"
@@ -136,6 +137,12 @@ export function ItemForm({ type, onSuccess, onCancel }: ItemFormProps) {
     try {
       if (!user) {
         throw new Error("You must be logged in to report an item")
+      }
+
+      // Ensure profile exists
+      const profileResult = await profiles.ensureProfileExists();
+      if (!profileResult.success) {
+        throw new Error(profileResult.error || 'Failed to ensure profile exists');
       }
       
       // Handle image upload if a file was selected

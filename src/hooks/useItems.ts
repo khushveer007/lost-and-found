@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Item } from '@/services/api';
+import { Item, items as itemsApi } from '@/services/api';
 
 interface UseItemsResult {
   data: Item[];
@@ -17,45 +17,14 @@ export function useItems(type?: 'lost' | 'found'): UseItemsResult {
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
-      // Simulate API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const result = await itemsApi.getItems(type);
       
-      // Mock data for testing
-      const mockItems: Item[] = [
-        // You can replace this with actual API calls
-        {
-          id: 1,
-          name: "Laptop",
-          description: "Silver MacBook Pro",
-          category: "Electronics",
-          location: "Library",
-          date: "2023-05-15",
-          type: "lost",
-          status: "Active",
-          user_id: "user1",
-          created_at: "2023-05-15T10:30:00Z"
-        },
-        {
-          id: 2,
-          name: "Water Bottle",
-          description: "Blue Hydro Flask",
-          category: "Accessories",
-          location: "Gym",
-          date: "2023-05-16",
-          type: "found",
-          status: "Waiting for owner",
-          user_id: "user2",
-          created_at: "2023-05-16T14:20:00Z"
-        }
-      ];
-      
-      // Filter by type if specified
-      const filteredItems = type 
-        ? mockItems.filter(item => item.type === type) 
-        : mockItems;
-      
-      setData(filteredItems);
-      setError(null);
+      if (result.success) {
+        setData(result.data);
+        setError(null);
+      } else {
+        throw new Error(result.error);
+      }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch items'));
     } finally {
@@ -69,20 +38,15 @@ export function useItems(type?: 'lost' | 'found'): UseItemsResult {
 
   const createItem = useCallback(async (item: Omit<Item, 'id' | 'created_at'>) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const result = await itemsApi.createItem(item);
       
-      // In a real app, you'd call your API here
-      // For now, just add it to the local state
-      const newItem: Item = {
-        ...item,
-        id: Math.floor(Math.random() * 10000),
-        created_at: new Date().toISOString()
-      };
-      
-      setData(prev => [...prev, newItem]);
-      
-      return { success: true };
+      if (result.success) {
+        // Add the new item to the local state
+        setData(prev => [...prev, result.data]);
+        return { success: true };
+      } else {
+        return { success: false, error: result.error };
+      }
     } catch (err) {
       return { 
         success: false, 

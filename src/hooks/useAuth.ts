@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { auth, User, supabase } from '@/services/api';
+import { auth, User, supabase, profiles } from '@/services/api';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -93,48 +93,41 @@ export function useAuth() {
     };
   }, []);
   
-  const signIn = async (email: string, password: string): Promise<{success: boolean, error?: string}> => {
+  const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      setError(null);
-      const result = await auth.signIn(email, password);
+      const result = await auth.login(email, password);
       
       if (!result.success) {
         throw result.error;
       }
       
-      // Auth state listener will handle setting the user
+      // Ensure user profile exists
+      await profiles.ensureProfileExists();
+      
       return { success: true };
-    } catch (err: any) {
-      setError(err.message || 'Sign in failed');
-      return { success: false, error: err.message };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to login' };
     } finally {
       setLoading(false);
     }
   };
   
-  const signUp = async (
-    email: string, 
-    password: string, 
-    firstName?: string, 
-    lastName?: string
-  ): Promise<{success: boolean, error?: string}> => {
+  const register = async (email: string, password: string, userData?: Partial<User>) => {
     try {
       setLoading(true);
-      setError(null);
-      
-      // Optimize by combining operations - create the user with a profile in a single transaction
-      // We've implemented a better approach in the API service
-      const result = await auth.signUp(email, password, firstName, lastName);
+      const result = await auth.register(email, password);
       
       if (!result.success) {
-        throw new Error(result.error);
+        throw result.error;
       }
       
+      // Ensure user profile exists
+      await profiles.ensureProfileExists();
+      
       return { success: true };
-    } catch (err: any) {
-      setError(err.message || "Failed to sign up");
-      return { success: false, error: err.message };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to register' };
     } finally {
       setLoading(false);
     }
@@ -156,8 +149,8 @@ export function useAuth() {
     user,
     loading,
     error,
-    signIn,
-    signUp,
+    login,
+    register,
     signOut,
     isAuthenticated: !!user
   };

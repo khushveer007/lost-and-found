@@ -20,17 +20,20 @@ export interface User {
 }
 
 export interface Item {
-  id: number
-  name: string
-  description: string
-  category: string
-  location: string
-  date: string
-  type: 'lost' | 'found'
-  status: string
-  image_url?: string
-  user_id: string
-  created_at: string
+  id: string; // Changed from number to string (UUID)
+  name: string;
+  description: string;
+  category: string;
+  location: string;
+  date: string;
+  type: 'lost' | 'found';
+  status: string;
+  user_id: string;
+  created_at: string;
+  image_url?: string;
+  reward?: number;
+  is_resolved?: boolean;
+  is_claimed?: boolean;
 }
 
 // Auth functions
@@ -196,110 +199,381 @@ export const auth = {
       console.error('Get session error:', error)
       return { success: false, error: error.message, hasSession: false }
     }
+  },
+
+  register: async (email: string, password: string, firstName?: string, lastName?: string) => {
+    try {
+      console.log('Signing up user:', email);
+      
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName
+          }
+        }
+      });
+      
+      if (authError) {
+        console.error('Auth error during signup:', authError);
+        throw authError;
+      }
+      
+      if (!authData?.user?.id) {
+        throw new Error('No user ID returned from signup');
+      }
+      
+      console.log('User created successfully, creating profile');
+      
+      // Create profile for user - updated to match table schema
+      try {
+        const fullName = [firstName, lastName].filter(Boolean).join(' ');
+        // Generate a username based on email (at least 3 chars)
+        const baseUsername = email.split('@')[0];
+        const username = baseUsername.length >= 3 ? baseUsername : `user_${baseUsername}`;
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            username: username,
+            full_name: fullName || null,
+            email: email,
+            // Do not include fields that don't exist in the table
+          });
+        
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          // Try a different username if it's a unique constraint error
+          if (profileError.code === '23505') { // Unique constraint error code
+            const usernameWithRandom = `${username}_${Math.floor(Math.random() * 1000)}`;
+            const { error: retryError } = await supabase
+              .from('profiles')
+              .insert({
+                id: authData.user.id,
+                username: usernameWithRandom,
+                full_name: fullName || null,
+                email: email
+              });
+              
+            if (retryError) {
+              console.error('Profile creation retry failed:', retryError);
+            } else {
+              console.log('Profile created successfully on retry');
+            }
+          }
+        } else {
+          console.log('Profile created successfully');
+        }
+      } catch (profileErr) {
+        console.error('Failed to create profile, but auth succeeded:', profileErr);
+      }
+      
+      return { success: true, user: authData.user };
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      return { success: false, error: error.message || 'Failed to sign up' };
+    }
   }
 }
 
+// Add a profiles service to ensure user profile exists
+export const profiles = {
+  ensureProfileExists: async () => {
+    try {
+      // Get current user
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!userData.user) throw new Error('No authenticated user found');
+      
+      // Check if profile exists
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userData.user.id)
+        .single();
+      
+      // Create profile if it doesn't exist
+      if (!existingProfile && profileError?.code === 'PGRST116') {
+        // Generate username from email or a random string
+        const email = userData.user.email || '';
+        const baseUsername = email.split('@')[0];
+        const username = baseUsername.length >= 3 ? baseUsername : `user_${Math.random().toString(36).substring(2, 8)}`;
+        
+        // Get user metadata for names
+        const firstName = userData.user.user_metadata?.first_name || '';
+        const lastName = userData.user.user_metadata?.last_name || '';
+        const fullName = [firstName, lastName].filter(Boolean).join(' ');
+        
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userData.user.id,
+            username: username,
+            full_name: fullName || null,
+            email: email
+          });
+        
+        if (insertError) {
+          // If username already exists, try with a random suffix
+          if (insertError.code === '23505') {
+            const randomUsername = `user_${Math.random().toString(36).substring(2, 10)}`;
+            const { error: retryError } = await supabase
+              .from('profiles')
+              .insert({
+                id: userData.user.id,
+                username: randomUsername,
+                full_name: fullName || null,
+                email: email
+              });
+            
+            if (retryError) throw retryError;
+          } else {
+            throw insertError;
+          }
+        }
+      } else if (profileError && profileError.code !== 'PGRST116') {
+        throw profileError;
+      }
+      
+      return { success: true, userId: userData.user.id };
+    } catch (error: any) {
+      console.error('Error ensuring profile exists:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};
+
 // Item functions
 export const items = {
-  // Get all items (with optional filters)
-  getItems: async (type?: 'lost' | 'found', status?: string, userId?: string) => {
+  // Get all items (combining lost and found)
+  getItems: async (type?: 'lost' | 'found') => {
     try {
-      let query = supabase.from('items').select('*')
+      let lostItems = [];
+      let foundItems = [];
       
-      if (type) {
-        query = query.eq('type', type)
+      // Get lost items
+      if (!type || type === 'lost') {
+        const { data: lostData, error: lostError } = await supabase
+          .from('lost_items')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (lostError) throw lostError;
+        
+        lostItems = lostData.map(item => ({
+          ...item,
+          name: item.title, // Map title to name for consistency
+          type: 'lost',
+          status: item.is_resolved ? 'Resolved' : 'Active'
+        }));
       }
       
-      if (status) {
-        query = query.eq('status', status)
+      // Get found items
+      if (!type || type === 'found') {
+        const { data: foundData, error: foundError } = await supabase
+          .from('found_items')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (foundError) throw foundError;
+        
+        foundItems = foundData.map(item => ({
+          ...item,
+          name: item.title, // Map title to name for consistency
+          type: 'found',
+          status: item.is_claimed ? 'Claimed' : 'Waiting for owner'
+        }));
       }
       
-      if (userId) {
-        query = query.eq('user_id', userId)
-      }
+      // Combine results
+      const combinedItems = [...lostItems, ...foundItems];
       
-      const { data, error } = await query.order('created_at', { ascending: false })
-      
-      if (error) throw error
-      
-      return { success: true, data: data as Item[] }
+      return { success: true, data: combinedItems };
     } catch (error: any) {
-      console.error('Get items error:', error)
-      return { success: false, error: error.message, data: [] }
-    }
-  },
-  
-  // Get a single item by ID
-  getItem: async (id: number) => {
-    try {
-      const { data, error } = await supabase.from('items').select('*').eq('id', id).single()
-      
-      if (error) throw error
-      
-      return { success: true, data: data as Item }
-    } catch (error: any) {
-      console.error('Get item error:', error)
-      return { success: false, error: error.message }
+      console.error('Get items error:', error);
+      return { success: false, error: error.message, data: [] };
     }
   },
   
   // Create a new item
   createItem: async (item: Omit<Item, 'id' | 'created_at'>) => {
     try {
-      const { data, error } = await supabase.from('items').insert(item).select()
+      // First ensure the user profile exists
+      const profileResult = await profiles.ensureProfileExists();
+      if (!profileResult.success) {
+        throw new Error(profileResult.error || 'Failed to ensure profile exists');
+      }
       
-      if (error) throw error
+      // Use the confirmed userId from the profile
+      const userId = profileResult.userId;
       
-      return { success: true, data: data[0] as Item }
+      // Prepare data based on item type
+      const itemData = {
+        title: item.name,
+        description: item.description,
+        category: item.category,
+        image_url: item.image_url,
+        user_id: userId
+      };
+      
+      let result;
+      
+      // Insert into the appropriate table
+      if (item.type === 'lost') {
+        const lostItemData = {
+          ...itemData,
+          lost_date: item.date,
+          lost_location: item.location,
+          is_resolved: false,
+          reward: item.reward || null
+        };
+        
+        result = await supabase.from('lost_items').insert(lostItemData).select();
+      } else {
+        const foundItemData = {
+          ...itemData,
+          found_date: item.date,
+          found_location: item.location,
+          is_claimed: false
+        };
+        
+        result = await supabase.from('found_items').insert(foundItemData).select();
+      }
+      
+      const { data, error } = result;
+      
+      if (error) throw error;
+      
+      // Return formatted item
+      const newItem = {
+        ...data[0],
+        name: data[0].title,
+        location: data[0].lost_location || data[0].found_location,
+        date: data[0].lost_date || data[0].found_date,
+        type: item.type,
+        status: item.type === 'lost' ? 'Active' : 'Waiting for owner'
+      };
+      
+      return { success: true, data: newItem as Item };
     } catch (error: any) {
-      console.error('Create item error:', error)
-      return { success: false, error: error.message }
+      console.error('Create item error:', error);
+      return { success: false, error: error.message };
     }
   },
   
   // Update an existing item
-  updateItem: async (id: number, updates: Partial<Item>) => {
+  updateItem: async (id: string, updates: Partial<Item>, type: 'lost' | 'found') => {
     try {
-      const { data, error } = await supabase.from('items').update(updates).eq('id', id).select()
+      const table = type === 'lost' ? 'lost_items' : 'found_items';
+      const updateData: any = {};
       
-      if (error) throw error
+      // Map fields to the appropriate table fields
+      if (updates.name) updateData.title = updates.name;
+      if (updates.description) updateData.description = updates.description;
+      if (updates.category) updateData.category = updates.category;
+      if (updates.image_url) updateData.image_url = updates.image_url;
       
-      return { success: true, data: data[0] as Item }
+      if (type === 'lost') {
+        if (updates.location) updateData.lost_location = updates.location;
+        if (updates.date) updateData.lost_date = updates.date;
+        if (updates.status) updateData.is_resolved = updates.status === 'Resolved';
+        if (updates.reward !== undefined) updateData.reward = updates.reward;
+      } else {
+        if (updates.location) updateData.found_location = updates.location;
+        if (updates.date) updateData.found_date = updates.date;
+        if (updates.status) updateData.is_claimed = updates.status === 'Claimed';
+      }
+      
+      const { data, error } = await supabase
+        .from(table)
+        .update(updateData)
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      
+      // Return formatted item
+      const updatedItem = {
+        ...data[0],
+        name: data[0].title,
+        location: data[0].lost_location || data[0].found_location,
+        date: data[0].lost_date || data[0].found_date,
+        type,
+        status: type === 'lost' 
+          ? (data[0].is_resolved ? 'Resolved' : 'Active') 
+          : (data[0].is_claimed ? 'Claimed' : 'Waiting for owner')
+      };
+      
+      return { success: true, data: updatedItem as Item };
     } catch (error: any) {
-      console.error('Update item error:', error)
-      return { success: false, error: error.message }
+      console.error('Update item error:', error);
+      return { success: false, error: error.message };
     }
   },
   
   // Delete an item
-  deleteItem: async (id: number) => {
+  deleteItem: async (id: string, type: 'lost' | 'found') => {
     try {
-      const { error } = await supabase.from('items').delete().eq('id', id)
+      const table = type === 'lost' ? 'lost_items' : 'found_items';
       
-      if (error) throw error
+      const { error } = await supabase.from(table).delete().eq('id', id);
       
-      return { success: true }
+      if (error) throw error;
+      
+      return { success: true };
     } catch (error: any) {
-      console.error('Delete item error:', error)
-      return { success: false, error: error.message }
+      console.error('Delete item error:', error);
+      return { success: false, error: error.message };
     }
   },
   
   // Search items
   searchItems: async (query: string) => {
     try {
-      const { data, error } = await supabase
-        .from('items')
+      // Search in lost_items
+      const { data: lostData, error: lostError } = await supabase
+        .from('lost_items')
         .select('*')
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%,location.ilike.%${query}%`)
-        .order('created_at', { ascending: false })
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%,lost_location.ilike.%${query}%`)
+        .order('created_at', { ascending: false });
       
-      if (error) throw error
+      if (lostError) throw lostError;
       
-      return { success: true, data: data as Item[] }
+      // Search in found_items
+      const { data: foundData, error: foundError } = await supabase
+        .from('found_items')
+        .select('*')
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%,found_location.ilike.%${query}%`)
+        .order('created_at', { ascending: false });
+      
+      if (foundError) throw foundError;
+      
+      // Format and combine results
+      const lostItems = lostData.map(item => ({
+        ...item,
+        name: item.title,
+        location: item.lost_location,
+        date: item.lost_date,
+        type: 'lost',
+        status: item.is_resolved ? 'Resolved' : 'Active'
+      }));
+      
+      const foundItems = foundData.map(item => ({
+        ...item,
+        name: item.title,
+        location: item.found_location,
+        date: item.found_date,
+        type: 'found',
+        status: item.is_claimed ? 'Claimed' : 'Waiting for owner'
+      }));
+      
+      return { success: true, data: [...lostItems, ...foundItems] as Item[] };
     } catch (error: any) {
-      console.error('Search items error:', error)
-      return { success: false, error: error.message, data: [] }
+      console.error('Search items error:', error);
+      return { success: false, error: error.message, data: [] };
     }
   }
 }
