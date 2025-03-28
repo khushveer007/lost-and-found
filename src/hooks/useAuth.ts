@@ -96,7 +96,7 @@ export function useAuth() {
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const result = await auth.login(email, password);
+      const result = await auth.signIn(email, password);
       
       if (!result.success) {
         throw result.error;
