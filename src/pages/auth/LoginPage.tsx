@@ -27,12 +27,23 @@ export function LoginPage() {
   const { signIn, isAuthenticated, loading: authLoading } = useAuth()
   const { navigateTo } = useNavigation();
 
-  // Redirect to dashboard if already authenticated
+  // Improve the redirect logic to avoid the loading issue
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      console.log("User already authenticated, redirecting to dashboard");
-      navigateTo('dashboard');
-    }
+    let isMounted = true;
+    
+    const checkAuthAndRedirect = async () => {
+      // Only redirect if component is still mounted
+      if (isAuthenticated && !authLoading && isMounted) {
+        console.log("User already authenticated, redirecting to dashboard");
+        navigateTo('dashboard');
+      }
+    };
+    
+    checkAuthAndRedirect();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [isAuthenticated, authLoading, navigateTo]);
 
   const validateForm = () => {
@@ -54,8 +65,14 @@ export function LoginPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Don't proceed if already authenticated
+    if (isAuthenticated) {
+      navigateTo('dashboard');
+      return;
+    }
     
     if (!validateForm()) return
     
@@ -112,7 +129,7 @@ export function LoginPage() {
           </Toast>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
           <FormSection>
             <FormItem>
               <FormLabel error={!!errors.email}>Email</FormLabel>

@@ -7,11 +7,13 @@ import { LandingCTA } from "./components/LandingCTA"
 import { MobileNav } from "./components/MobileNav"
 import { useNavigation } from '@/contexts/NavigationContext';
 import { LandingAbout } from "./components/LandingAbout";
+import { useAuth } from '@/contexts/AuthContext'; // Add this import
 
 export function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const { navigateTo } = useNavigation();
+  const { isAuthenticated } = useAuth(); // Add this line to get auth state
 
   // Add scroll effect for header
   useEffect(() => {
@@ -66,8 +68,18 @@ export function LandingPage() {
             >
               About
             </button>
-            <Button variant="outline" className="ml-2" onClick={() => navigateTo('login')}>Log in</Button>
-            <Button className="shadow-md hover:shadow-lg transition-shadow" onClick={() => navigateTo('register')}>Sign up</Button>
+            
+            {/* Conditional rendering based on authentication status */}
+            {isAuthenticated ? (
+              <Button className="ml-2 shadow-md hover:shadow-lg transition-shadow" onClick={() => navigateTo('dashboard')}>
+                Dashboard
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" className="ml-2" onClick={() => navigateTo('login')}>Log in</Button>
+                <Button className="shadow-md hover:shadow-lg transition-shadow" onClick={() => navigateTo('register')}>Sign up</Button>
+              </>
+            )}
           </nav>
           
           {/* Mobile Menu Button */}
