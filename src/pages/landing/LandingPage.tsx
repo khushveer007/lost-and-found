@@ -8,12 +8,69 @@ import { MobileNav } from "./components/MobileNav"
 import { useNavigation } from '@/contexts/NavigationContext';
 import { LandingAbout } from "./components/LandingAbout";
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/services/api';
 
 export function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const { navigateTo } = useNavigation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+
+  // Directly check session status on page load and whenever component re-renders
+  useEffect(() => {
+    let mounted = true;
+    
+    const checkSession = async () => {
+      try {
+        console.log("Landing page: checking session");
+        // Get the active session
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session check error:", error);
+          if (mounted) {
+            setSessionChecked(true);
+            setHasSession(false);
+          }
+          return;
+        }
+        
+        console.log("Session check result:", !!data.session, data.session);
+        
+        // Only update state if component is still mounted
+        if (mounted) {
+          setHasSession(!!data.session);
+          setSessionChecked(true);
+        }
+      } catch (error) {
+        console.error("Session check error:", error);
+        if (mounted) {
+          setSessionChecked(true);
+          setHasSession(false);
+        }
+      }
+    };
+    
+    // Check immediately on mount
+    checkSession();
+    
+    // Also set up event listener for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed in LandingPage:", event, !!session);
+      if (mounted) {
+        setHasSession(!!session);
+        setSessionChecked(true);
+      }
+    });
+    
+    // Cleanup
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Add scroll effect for header
   useEffect(() => {
@@ -27,7 +84,7 @@ export function LandingPage() {
     
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+  }, []);
   
   // Function to handle anchor scrolling
   const scrollToSection = (sectionId: string) => {
@@ -36,6 +93,13 @@ export function LandingPage() {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  // Use both the context value and our direct session check to determine auth state
+  const showAuthButtons = sessionChecked;
+  // IMPORTANT: This is the key change - prioritize direct session check
+  const showDashboardButton = hasSession || isAuthenticated;
+
+  console.log("Auth state in LandingPage:", { hasSession, isAuthenticated, sessionChecked, showDashboardButton });
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -70,15 +134,21 @@ export function LandingPage() {
               About
             </button>
             
-            {isAuthenticated ? (
-              <Button className="ml-2 shadow-md hover:shadow-lg transition-shadow" onClick={() => navigateTo('dashboard')}>
-                Dashboard
-              </Button>
-            ) : (
-              <>
-                <Button variant="outline" className="ml-2" onClick={() => navigateTo('login')}>Log in</Button>
-                <Button className="shadow-md hover:shadow-lg transition-shadow" onClick={() => navigateTo('register')}>Sign up</Button>
-              </>
+            {/* Only render these buttons after we've checked the session */}
+            {showAuthButtons && (
+              showDashboardButton ? (
+                <Button 
+                  className="ml-2 shadow-md hover:shadow-lg transition-shadow" 
+                  onClick={() => navigateTo('dashboard')}
+                >
+                  Dashboard
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" className="ml-2" onClick={() => navigateTo('login')}>Log in</Button>
+                  <Button className="shadow-md hover:shadow-lg transition-shadow" onClick={() => navigateTo('register')}>Sign up</Button>
+                </>
+              )
             )}
           </nav>
           
@@ -109,8 +179,14 @@ export function LandingPage() {
         </div>
       </header>
       
-      {/* Mobile Navigation */}
-      <MobileNav isOpen={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} />
+      {/* Pass authentication state to MobileNav */}
+      <MobileNav 
+        isOpen={isMobileNavOpen} 
+        onClose={() => setIsMobileNavOpen(false)} 
+        isAuthenticated={showDashboardButton}
+        authChecked={showAuthButtons}
+        navigateTo={navigateTo}
+      />
       
       <main className="flex-1">
         <LandingHero />
@@ -123,7 +199,9 @@ export function LandingPage() {
         <div id="about">
           <LandingAbout />
         </div>
-        <LandingCTA />
+        
+        {/* Pass auth state explicitly to LandingCTA to ensure consistency */}
+        <LandingCTA isAuthenticated={showDashboardButton} />
       </main>
       
       <footer className="mt-auto border-t py-8 bg-muted/30">

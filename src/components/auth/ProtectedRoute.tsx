@@ -1,95 +1,95 @@
-import { ReactNode, useEffect } from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import { useNavigation } from "@/contexts/NavigationContext"
-import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { ReactNode, useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigation } from "@/contexts/NavigationContext";
+import { supabase } from "@/services/api";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  fallback?: ReactNode;
-  redirectAfterMs?: number;
 }
 
-export function ProtectedRoute({ children, fallback, redirectAfterMs = 0 }: ProtectedRouteProps) {
-  const { isAuthenticated, loading, user } = useAuth()
-  const { navigateTo } = useNavigation()
-  const [showAuthMessage, setShowAuthMessage] = useState(false)
-  
-  // Prevent flashing unauthorized message during loading
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated, loading } = useAuth();
+  const { navigateTo } = useNavigation();
+  const [directSessionCheck, setDirectSessionCheck] = useState<boolean | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // Check session directly for immediate response after page refresh
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let mounted = true;
     
-    // Only show auth message if still not authenticated after a short delay
-    if (!loading && !isAuthenticated) {
-      timer = setTimeout(() => {
-        setShowAuthMessage(true);
-      }, 300); // Small delay to prevent flash
-    } else {
-      // Clear timeout if we become authenticated
-      setShowAuthMessage(false);
-    }
+    const checkSession = async () => {
+      try {
+        console.log("ProtectedRoute: Checking direct session");
+        setCheckingSession(true);
+        const { data } = await supabase.auth.getSession();
+        
+        if (mounted) {
+          setDirectSessionCheck(!!data.session);
+          console.log("Direct session check result:", !!data.session);
+        }
+      } catch (error) {
+        console.error("Session check error:", error);
+        if (mounted) {
+          setDirectSessionCheck(false);
+        }
+      } finally {
+        if (mounted) {
+          setCheckingSession(false);
+        }
+      }
+    };
+    
+    checkSession();
     
     return () => {
-      if (timer) clearTimeout(timer);
+      mounted = false;
     };
-  }, [loading, isAuthenticated]);
+  }, []);
+
+  // Combined auth state from context and direct check
+  const userAuthenticated = isAuthenticated || directSessionCheck;
   
-  // Show loading state while auth is initializing
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
-        <p className="mt-4 text-muted-foreground">Checking authentication...</p>
-      </div>
-    )
-  }
-  
-  // Show children if authenticated
-  if (isAuthenticated && user) {
-    console.log("User is authenticated, showing protected content", user);
-    return <>{children}</>
-  }
-  
-  // Show auth message if not authenticated and not loading
-  if (showAuthMessage) {
-    // Auto-redirect after delay if specified
-    if (redirectAfterMs > 0) {
-      setTimeout(() => {
-        navigateTo('login');
-      }, redirectAfterMs);
+  // KEY CHANGE: Use OR instead of AND for checking state to prevent getting stuck
+  const isChecking = loading || checkingSession;
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    // Only redirect if we've confirmed user is not authenticated
+    if (!isChecking && !userAuthenticated && directSessionCheck === false) {
+      console.log("User not authenticated, redirecting to login");
+      navigateTo('login');
     }
-    
-    return fallback || (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="bg-background border rounded-lg p-8 max-w-md w-full">
-          <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
-          <p className="text-muted-foreground mb-6">
-            You need to be logged in to access this page.
-          </p>
-          <div className="flex gap-4">
-            <Button 
-              onClick={() => navigateTo('login')}
-              className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium"
-            >
-              Log in
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => navigateTo('register')}
-              className="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm font-medium"
-            >
-              Sign up
-            </Button>
+  }, [userAuthenticated, isChecking, directSessionCheck, navigateTo]);
+
+  // IMPORTANT: Prioritize showing content if we've detected authentication
+  if (userAuthenticated) {
+    console.log("User is authenticated, showing protected content");
+    return <>{children}</>;
+  }
+
+  // Show loading state only if we're still checking and haven't determined auth state
+  if (isChecking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
           </div>
+          <p className="text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
-    )
+    );
   }
-  
-  // Return an empty loading state if auth message isn't ready to show yet
+
+  // This would only briefly show before redirect happens
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <div className="flex justify-center mb-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+        </div>
+        <p className="text-muted-foreground">Redirecting to login...</p>
+      </div>
     </div>
   );
 }

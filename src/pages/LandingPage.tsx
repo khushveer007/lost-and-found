@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigation } from '@/contexts/NavigationContext'
+import { Button } from '@/components/ui/button'
 
 // ...existing code...
 
