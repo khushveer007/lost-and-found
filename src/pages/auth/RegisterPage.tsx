@@ -35,9 +35,15 @@ export function RegisterPage() {
 
   // If already authenticated, redirect to dashboard
   useEffect(() => {
-    if (isAuthenticated) {
+    let isMounted = true;
+    
+    if (isAuthenticated && isMounted) {
       navigateTo('dashboard');
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [isAuthenticated, navigateTo]);
 
   // Debounced field validation for better performance
@@ -155,7 +161,13 @@ export function RegisterPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
+    
+    // Don't proceed if already authenticated
+    if (isAuthenticated) {
+      navigateTo('dashboard');
+      return;
+    }
     
     console.log("Registration form submitted");
     setRegistrationStage('validating')

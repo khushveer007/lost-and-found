@@ -1,9 +1,73 @@
 import { Button } from "@/components/ui/button"
 import { useNavigation } from '@/contexts/NavigationContext';
 import { CampusBanner } from "@/components/ui/campus-banner";
+import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from "react";
+import { supabase } from '@/services/api';
 
-export function LandingCTA() {
+interface LandingCTAProps {
+  // Optional prop to override the authentication state
+  isAuthenticated?: boolean;
+}
+
+export function LandingCTA({ isAuthenticated: propIsAuthenticated }: LandingCTAProps) {
   const { navigateTo } = useNavigation();
+  const { isAuthenticated: contextIsAuthenticated } = useAuth();
+  const [hasSession, setHasSession] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  
+  // Check for active session directly for better reliability
+  useEffect(() => {
+    let mounted = true;
+    
+    const checkSession = async () => {
+      try {
+        console.log("LandingCTA: checking session");
+        const { data } = await supabase.auth.getSession();
+        
+        if (mounted) {
+          setHasSession(!!data.session);
+          setSessionChecked(true);
+          console.log("LandingCTA session check result:", !!data.session);
+        }
+      } catch (error) {
+        console.error("Session check error in CTA:", error);
+        if (mounted) {
+          setSessionChecked(true);
+        }
+      }
+    };
+    
+    checkSession();
+    
+    // Also listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed in LandingCTA:", event, !!session);
+      if (mounted) {
+        setHasSession(!!session);
+        setSessionChecked(true);
+      }
+    });
+    
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+  
+  // Prioritize the prop if available, otherwise use our internal state
+  // This ensures both parent-passed state and internally checked state work
+  const showDashboardButton = propIsAuthenticated !== undefined 
+    ? propIsAuthenticated 
+    : (hasSession || contextIsAuthenticated);
+  
+  console.log("Auth state in LandingCTA:", { 
+    propIsAuthenticated, 
+    contextIsAuthenticated, 
+    hasSession, 
+    showDashboardButton,
+    sessionChecked
+  });
   
   return (
     <section className="py-16 md:py-24 bg-primary text-primary-foreground">
@@ -19,23 +83,37 @@ export function LandingCTA() {
             Free university service - No subscription or payment required
           </CampusBanner>
           
-          <div className="space-x-4">
-            <Button 
-              size="lg" 
-              onClick={() => navigateTo('register')}
-              className="bg-white text-primary hover:bg-white/90"
-            >
-              Create Free Account
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={() => navigateTo('login')}
-              className="border-white text-white hover:bg-white/10"
-            >
-              Log In
-            </Button>
-          </div>
+          {(sessionChecked || propIsAuthenticated !== undefined) && (
+            <div className="space-x-4">
+              {showDashboardButton ? (
+                <Button 
+                  size="lg" 
+                  onClick={() => navigateTo('dashboard')}
+                  className="bg-white text-primary hover:bg-white/90"
+                >
+                  Go to Dashboard
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    size="lg" 
+                    onClick={() => navigateTo('register')}
+                    className="bg-white text-primary hover:bg-white/90"
+                  >
+                    Create Free Account
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    onClick={() => navigateTo('login')}
+                    className="border-white text-white hover:bg-white/10"
+                  >
+                    Log In
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-16">
             <div className="flex flex-col items-center p-5 bg-white/10 rounded-lg backdrop-blur-sm">

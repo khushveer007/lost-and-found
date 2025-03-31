@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { supabase } from '@/services/api';
 import { User, auth } from '@/services/api';
 
@@ -24,13 +24,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state - Check session on mount
   useEffect(() => {
+    let mounted = true;
+
     const getInitialSession = async () => {
       try {
+        console.log("Checking initial session");
         setLoading(true);
         // Check if there's an active session
         const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
+
+        if (session && mounted) {
           console.log("Active session found", session);
           const { data } = await supabase.auth.getUser();
           if (data.user) {
@@ -40,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .select('*')
               .eq('id', data.user.id)
               .single();
-              
+
             // Set user data
             setUser({
               id: data.user.id,
@@ -50,22 +53,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             setIsAuthenticated(true);
           }
+        } else if (mounted) {
+          setUser(null);
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error("Session initialization error:", error);
+        if (mounted) {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
-    
+
     getInitialSession();
-    
+
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event, !!session);
-        
-        if (session) {
+
+        if (session && mounted) {
           try {
             // Get user profile
             const { data: profile } = await supabase
@@ -73,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .select('*')
               .eq('id', session.user.id)
               .single();
-              
+
             // Update user state
             setUser({
               id: session.user.id,
@@ -85,23 +97,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch (err) {
             console.error("Error fetching user profile:", err);
             // Still set basic user info even without profile
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-            });
-            setIsAuthenticated(true);
+            if (mounted) {
+              setUser({
+                id: session.user.id,
+                email: session.user.email || '',
+              });
+              setIsAuthenticated(true);
+            }
           }
-        } else {
+        } else if (mounted) {
           // Clear user state when logged out
           setUser(null);
           setIsAuthenticated(false);
         }
-        
-        setLoading(false);
+
+        if (mounted) {
+          setLoading(false);
+        }
       }
     );
-    
+
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -116,14 +133,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Call API service's signUp function
       const result = await auth.signUp(email, password, firstName, lastName);
-      
+
       if (!result.success) {
         throw new Error(result.error || "Failed to sign up");
       }
-      
+
       return { success: true };
     } catch (err: any) {
       console.error("Sign up error:", err);
@@ -142,14 +159,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Call API service's signIn function
       const result = await auth.signIn(email, password);
-      
+
       if (!result.success) {
         throw new Error(result.error || "Failed to sign in");
       }
-      
+
       // The auth state listener will handle setting the user
       return { success: true };
     } catch (err: any) {
@@ -161,13 +178,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Sign out function
+  // Sign out function with force refresh to ensure clean state
   const signOut = async (): Promise<void> => {
     try {
       setLoading(true);
       await auth.signOut();
+
+      // Force a clear state
       setUser(null);
       setIsAuthenticated(false);
+
+      // Optionally force page refresh to clear any lingering state
+      // window.location.href = '/';
     } catch (err: any) {
       console.error("Sign out error:", err);
       setError(err.message || "Failed to sign out");
@@ -184,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         options: { shouldCreateUser: false }
       });
-      
+
       // Use type assertion to access email_confirmed_at
       return !!data?.user && (data.user as any).email_confirmed_at != null;
     } catch (error) {
@@ -200,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         type: 'signup',
         email,
       });
-      
+
       if (error) throw error;
       return { success: true };
     } catch (err: any) {
