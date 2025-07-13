@@ -29,7 +29,7 @@ export function useAuth() {
               userData.first_name = data.first_name;
               userData.last_name = data.last_name;
             }
-          } catch (_error) {
+          } catch {
             console.log('No profile data found or profiles table doesn\'t exist');
           }
           
@@ -69,7 +69,7 @@ export function useAuth() {
               userData.first_name = profileData.first_name;
               userData.last_name = profileData.last_name;
             }
-          } catch (_error) {
+          } catch {
             console.log('No profile data found');
           }
           
@@ -114,7 +114,7 @@ export function useAuth() {
     }
   };
   
-  const register = async (email: string, password: string, _userData?: Partial<User>) => {
+  const register = async (email: string, password: string) => {
     try {
       setLoading(true);
       const result = await auth.register(email, password);

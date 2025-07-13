@@ -57,8 +57,8 @@ export function useErrorHandler(): UseErrorHandlerResult {
       } else if (err instanceof Error) {
         errorMessage = err.message;
       } else if (typeof err === 'object' && err !== null) {
-        const errObj = err as Record<string, any>;
-        if (errObj.message) {
+        const errObj = err as Record<string, unknown>;
+        if (errObj.message && typeof errObj.message === 'string') {
           errorMessage = errObj.message;
         } else if (errObj.error) {
           errorMessage = typeof errObj.error === 'string' 

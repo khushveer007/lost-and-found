@@ -65,8 +65,9 @@ export function ProfilePage() {
       
       setFormSuccess(true)
       setTimeout(() => setFormSuccess(false), 3000)
-    } catch (error: any) {
-      setFormError(error.message || "Failed to update profile")
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update profile";
+      setFormError(errorMessage);
     } finally {
       setIsSubmitting(false)
     }

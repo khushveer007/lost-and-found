@@ -105,8 +105,9 @@ export function LoginPage() {
       setAuthSuccess(true);
       hasRedirected.current = true;
       navigateTo('dashboard');
-    } catch (error: any) {
-      setAuthError(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      setAuthError(errorMessage);
       setIsSubmitting(false);
     }
   }

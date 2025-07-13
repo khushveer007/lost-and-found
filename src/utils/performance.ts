@@ -4,7 +4,7 @@
  * @param wait The debounce wait time in ms
  * @returns Debounced function
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -28,7 +28,7 @@ export function debounce<T extends (...args: any[]) => any>(
  * @param func The function to memoize
  * @returns Memoized function
  */
-export function memoize<T extends (...args: any[]) => any>(
+export function memoize<T extends (...args: unknown[]) => unknown>(
   func: T
 ): T {
   const cache = new Map();
@@ -36,12 +36,12 @@ export function memoize<T extends (...args: any[]) => any>(
   return ((...args: Parameters<T>): ReturnType<T> => {
     const key = JSON.stringify(args);
     if (cache.has(key)) {
-      return cache.get(key);
+      return cache.get(key) as ReturnType<T>;
     }
     
     const result = func(...args);
     cache.set(key, result);
-    return result;
+    return result as ReturnType<T>;
   }) as T;
 }
 
@@ -51,7 +51,7 @@ export function memoize<T extends (...args: any[]) => any>(
  * @param limit The time limit in ms
  * @returns Throttled function
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {

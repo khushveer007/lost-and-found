@@ -16,8 +16,8 @@
  * @returns Result object with success status, URL and possible error
  */
 export async function uploadItemImage(
-  file: File, 
-  _userId: string
+  file: File 
+  /* _userId: string */
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   if (!file) {
     return { success: false, error: 'No file provided' };

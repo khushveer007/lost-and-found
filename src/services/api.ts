@@ -88,7 +88,7 @@ export const auth = {
       return { success: true, user: authData.user };
     } catch (error: unknown) {
       console.error('Sign up error:', error);
-      return { success: false, error: error instanceof Error ? error.message : "Unknown error" || 'Failed to sign up' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to sign up' };
     }
   },
   
@@ -116,7 +116,7 @@ export const auth = {
       };
     } catch (error: unknown) {
       console.error('Sign in error:', error);
-      return { success: false, error: error instanceof Error ? error.message : "Unknown error" || 'Failed to sign in' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to sign in' };
     }
   },
   
@@ -274,7 +274,7 @@ export const auth = {
       return { success: true, user: authData.user };
     } catch (error: unknown) {
       console.error('Sign up error:', error);
-      return { success: false, error: error instanceof Error ? error.message : "Unknown error" || 'Failed to sign up' };
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to sign up' };
     }
   }
 }
@@ -468,7 +468,7 @@ export const items = {
   updateItem: async (id: string, updates: Partial<Item>, type: 'lost' | 'found') => {
     try {
       const table = type === 'lost' ? 'lost_items' : 'found_items';
-      const updateData: any = {};
+      const updateData: Record<string, unknown> = {};
       
       // Map fields to the appropriate table fields
       if (updates.name) updateData.title = updates.name;

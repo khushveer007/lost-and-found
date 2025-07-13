@@ -195,9 +195,10 @@ export function RegisterPage() {
       console.log("Registration successful");
       setAuthSuccess(true)
       setRegistrationStage('verification-sent')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Registration error:", error);
-      setAuthError(error.message || "An unexpected error occurred")
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      setAuthError(errorMessage);
       setRegistrationStage('idle')
     } finally {
       setIsSubmitting(false)
