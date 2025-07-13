@@ -86,9 +86,9 @@ export const auth = {
       }
       
       return { success: true, user: authData.user };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Sign up error:', error);
-      return { success: false, error: error.message || 'Failed to sign up' };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" || 'Failed to sign up' };
     }
   },
   
@@ -114,9 +114,9 @@ export const auth = {
         user: data.user,
         session: data.session
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Sign in error:', error);
-      return { success: false, error: error.message || 'Failed to sign in' };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" || 'Failed to sign in' };
     }
   },
   
@@ -128,9 +128,9 @@ export const auth = {
       if (error) throw error;
       
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Sign out error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   },
   
@@ -141,9 +141,9 @@ export const auth = {
       if (error) throw error;
       
       return { success: true, user: data.user };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Get current user error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   },
 
@@ -160,9 +160,9 @@ export const auth = {
         success: true, 
         verified: data?.user?.email === email && data?.user?.email_confirmed_at != null
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Check email verification error:', error);
-      return { success: false, error: error.message, verified: false };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error", verified: false };
     }
   },
   
@@ -177,9 +177,9 @@ export const auth = {
       if (error) throw error;
       
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Resend verification error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   },
 
@@ -195,9 +195,9 @@ export const auth = {
         session: data.session,
         hasSession: !!data.session
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Get session error:', error)
-      return { success: false, error: error.message, hasSession: false }
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error", hasSession: false }
     }
   },
 
@@ -272,9 +272,9 @@ export const auth = {
       }
       
       return { success: true, user: authData.user };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Sign up error:', error);
-      return { success: false, error: error.message || 'Failed to sign up' };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" || 'Failed to sign up' };
     }
   }
 }
@@ -339,9 +339,9 @@ export const profiles = {
       }
       
       return { success: true, userId: userData.user.id };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error ensuring profile exists:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   }
 };
@@ -392,9 +392,9 @@ export const items = {
       const combinedItems = [...lostItems, ...foundItems];
       
       return { success: true, data: combinedItems };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Get items error:', error);
-      return { success: false, error: error.message, data: [] };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error", data: [] };
     }
   },
   
@@ -458,9 +458,9 @@ export const items = {
       };
       
       return { success: true, data: newItem as Item };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Create item error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   },
   
@@ -508,9 +508,9 @@ export const items = {
       };
       
       return { success: true, data: updatedItem as Item };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Update item error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   },
   
@@ -524,9 +524,9 @@ export const items = {
       if (error) throw error;
       
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Delete item error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   },
   
@@ -571,9 +571,9 @@ export const items = {
       }));
       
       return { success: true, data: [...lostItems, ...foundItems] as Item[] };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Search items error:', error);
-      return { success: false, error: error.message, data: [] };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error", data: [] };
     }
   }
 }
@@ -598,9 +598,9 @@ export const messages = {
       if (error) throw error
       
       return { success: true, data }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Get messages error:', error)
-      return { success: false, error: error.message, data: [] }
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error", data: [] }
     }
   },
   
@@ -612,9 +612,9 @@ export const messages = {
       if (error) throw error
       
       return { success: true, data: data[0] }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Send message error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
     }
   },
   
@@ -629,9 +629,9 @@ export const messages = {
       if (error) throw error
       
       return { success: true }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Mark as read error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
     }
   }
 }

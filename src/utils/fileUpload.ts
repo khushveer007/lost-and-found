@@ -1,8 +1,5 @@
-import { supabase } from '@/services/api'
-// Make sure to install the required packages:
-// npm install uuid
-// npm install @types/uuid --save-dev
-import { v4 as uuidv4 } from 'uuid'
+// TODO: Implement file upload functionality with Supabase storage
+// Currently using placeholder implementation
 
 /**
  * Utility for handling file uploads
@@ -15,12 +12,12 @@ import { v4 as uuidv4 } from 'uuid'
 /**
  * Uploads an item image
  * @param file The file to be uploaded
- * @param userId The ID of the user uploading the file
+ * @param _userId The ID of the user uploading the file (unused in current implementation)
  * @returns Result object with success status, URL and possible error
  */
 export async function uploadItemImage(
   file: File, 
-  userId: string
+  _userId: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   if (!file) {
     return { success: false, error: 'No file provided' };

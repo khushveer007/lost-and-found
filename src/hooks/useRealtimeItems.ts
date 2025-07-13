@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Item } from '@/services/api';
 import { useItems } from './useItems';
 

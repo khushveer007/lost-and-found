@@ -29,7 +29,7 @@ export function useAuth() {
               userData.first_name = data.first_name;
               userData.last_name = data.last_name;
             }
-          } catch (error) {
+          } catch (_error) {
             console.log('No profile data found or profiles table doesn\'t exist');
           }
           
@@ -69,7 +69,7 @@ export function useAuth() {
               userData.first_name = profileData.first_name;
               userData.last_name = profileData.last_name;
             }
-          } catch (error) {
+          } catch (_error) {
             console.log('No profile data found');
           }
           
@@ -106,14 +106,15 @@ export function useAuth() {
       await profiles.ensureProfileExists();
       
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message || 'Failed to login' };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to login';
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
   };
   
-  const register = async (email: string, password: string, userData?: Partial<User>) => {
+  const register = async (email: string, password: string, _userData?: Partial<User>) => {
     try {
       setLoading(true);
       const result = await auth.register(email, password);
@@ -126,8 +127,9 @@ export function useAuth() {
       await profiles.ensureProfileExists();
       
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message || 'Failed to register' };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to register';
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
@@ -138,8 +140,9 @@ export function useAuth() {
       setLoading(true);
       await auth.signOut();
       setUser(null);
-    } catch (err: any) {
-      setError(err.message || 'Sign out failed');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Sign out failed';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

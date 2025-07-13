@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { DashboardLayout } from "@/components/layout/DashboardLayout"
-import { Button } from "@/components/ui/button"
 import { AnimatedButton } from "@/components/ui/animated-button"
 import { useItems } from "@/hooks/useItems"
 import { Item } from "@/services/api"

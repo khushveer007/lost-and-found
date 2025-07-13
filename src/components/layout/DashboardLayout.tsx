@@ -2,7 +2,6 @@ import React, { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
 import { useNavigation } from '@/contexts/NavigationContext';
-import { CampusBanner } from "@/components/ui/campus-banner";
 
 interface DashboardLayoutProps {
   children: ReactNode;
