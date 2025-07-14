@@ -29,9 +29,10 @@ export function EmailVerificationAlert({ email, className = '' }: EmailVerificat
       if (error) throw error;
       
       setResendStatus('success');
-    } catch (error: any) {
+    } catch (error: unknown) {
       setResendStatus('error');
-      setErrorMessage(error.message || 'Failed to resend verification email');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to resend verification email';
+      setErrorMessage(errorMessage);
       console.error('Error resending verification:', error);
     } finally {
       setIsResending(false);

@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
+import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { supabase } from '@/services/api';
 import { User, auth } from '@/services/api';
 
@@ -142,10 +142,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Sign up error:", err);
-      setError(err.message || "Failed to sign up");
-      return { success: false, error: err.message || "Failed to sign up" };
+      const errorMessage = err instanceof Error ? err.message : "Failed to sign up";
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
@@ -169,10 +170,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // The auth state listener will handle setting the user
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Sign in error:", err);
-      setError(err.message || "Failed to sign in");
-      return { success: false, error: err.message || "Failed to sign in" };
+      const errorMessage = err instanceof Error ? err.message : "Failed to sign in";
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
@@ -190,9 +192,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Optionally force page refresh to clear any lingering state
       // window.location.href = '/';
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Sign out error:", err);
-      setError(err.message || "Failed to sign out");
+      const errorMessage = err instanceof Error ? err.message : "Failed to sign out";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -207,8 +210,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: { shouldCreateUser: false }
       });
 
-      // Use type assertion to access email_confirmed_at
-      return !!data?.user && (data.user as any).email_confirmed_at != null;
+      // Check if user has confirmed email
+      return !!data?.user && !!(data.user as { email_confirmed_at?: string }).email_confirmed_at;
     } catch (error) {
       console.error("Error checking email verification:", error);
       return false;
@@ -225,9 +228,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error resending verification email:", err);
-      return { success: false, error: err.message };
+      const errorMessage = err instanceof Error ? err.message : "Failed to resend verification email";
+      return { success: false, error: errorMessage };
     }
   };
 

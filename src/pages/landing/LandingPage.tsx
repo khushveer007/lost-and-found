@@ -14,7 +14,7 @@ export function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const { navigateTo } = useNavigation();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [sessionChecked, setSessionChecked] = useState(false);
   const [hasSession, setHasSession] = useState(false);
 

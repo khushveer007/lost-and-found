@@ -88,15 +88,16 @@ export function ItemForm({ type, onSuccess, onCancel }: ItemFormProps) {
   }, [name, description, category, location, date, clearError, formTouched]);
 
   // Fix uploadItemImage by adding proper type safety
-  const handleImageUpload = async (file: File, userId: string): Promise<{success: boolean; url?: string; error?: string}> => {
+  const handleImageUpload = async (file: File): Promise<{success: boolean; url?: string; error?: string}> => {
     try {
       if (!file) return { success: false, error: 'No file provided' };
       
       // This is a placeholder - your actual implementation would replace this
-      const uploadResult = await uploadItemImage(file, userId);
+      const uploadResult = await uploadItemImage(file);
       return uploadResult;
-    } catch (error: any) {
-      return { success: false, error: error.message || 'Upload failed' };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -111,7 +112,7 @@ export function ItemForm({ type, onSuccess, onCancel }: ItemFormProps) {
     if (hasErrors) {
       // Find the first field with an error
       const firstErrorField = Object.entries(errors)
-        .find(([_, errorMsg]) => errorMsg !== null)?.[0];
+        .find(([, errorMsg]) => errorMsg !== null)?.[0];
         
       if (firstErrorField) {
         // Set the error message
@@ -148,7 +149,7 @@ export function ItemForm({ type, onSuccess, onCancel }: ItemFormProps) {
       // Handle image upload if a file was selected
       let finalImageUrl = '';
       if (imageFile) {
-        const uploadResult = await handleImageUpload(imageFile, user.id);
+        const uploadResult = await handleImageUpload(imageFile);
         if (!uploadResult.success) {
           throw new Error(uploadResult.error || 'Failed to upload image');
         }
@@ -194,8 +195,9 @@ export function ItemForm({ type, onSuccess, onCancel }: ItemFormProps) {
       if (onSuccess) {
         setTimeout(onSuccess, 1500)
       }
-    } catch (error: any) {
-      setError(error.message || "An unexpected error occurred")
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      setError(errorMessage);
       console.error(error)
     } finally {
       setIsSubmitting(false)

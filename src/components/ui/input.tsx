@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils"
  * Extends the standard HTML input attributes
  */
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+    error?: string;
+}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {

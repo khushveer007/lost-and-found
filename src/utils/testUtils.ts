@@ -8,9 +8,9 @@
  * @param component The component to test
  * @param loadingProp The prop name for loading state
  */
-export function validateLoadingState(component: any, loadingProp: string = 'isLoading'): boolean {
+export function validateLoadingState(component: Record<string, unknown>, loadingProp: string = 'isLoading'): boolean {
   // Check if component properly uses loading prop 
-  if (!component.hasOwnProperty(loadingProp)) {
+  if (!Object.prototype.hasOwnProperty.call(component, loadingProp)) {
     console.warn(`Component doesn't handle ${loadingProp} prop properly`);
     return false;
   }
@@ -52,9 +52,9 @@ export function validateAccessibility(element: HTMLElement): {
  * @param rules Validation rules object
  * @returns Object with error messages
  */
-export function validateForm<T extends Record<string, any>>(
+export function validateForm<T extends Record<string, unknown>>(
   formData: T, 
-  rules: Record<keyof T, Array<(value: any) => string | null>>
+  rules: Record<keyof T, Array<(value: unknown) => string | null>>
 ): Record<keyof T, string | null> {
   const errors: Partial<Record<keyof T, string | null>> = {};
   
@@ -84,7 +84,7 @@ export function validateForm<T extends Record<string, any>>(
 // Common validation rules
 export const validationRules = {
   required: (message: string = 'This field is required') => 
-    (value: any) => !value || (typeof value === 'string' && !value.trim()) 
+    (value: unknown) => !value || (typeof value === 'string' && !value.trim()) 
       ? message 
       : null,
       
@@ -109,7 +109,7 @@ export const validationRules = {
       : message,
       
   match: (matchField: string, message: string = 'Fields do not match') =>
-    (value: string, allValues: Record<string, any>) => 
+    (value: string, allValues: Record<string, unknown>) => 
       value === allValues[matchField] 
         ? null 
         : message

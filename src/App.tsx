@@ -13,6 +13,7 @@ import RegisterPage from '@/pages/auth/RegisterPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
 import ProfilePage from '@/pages/dashboard/ProfilePage';
 import ItemsPage from '@/pages/dashboard/ItemsPage';
+import { DashboardDemo } from '@/pages/demo/DashboardDemo';
 
 function App() {
   useEffect(() => {
@@ -41,6 +42,7 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/demo" element={<DashboardDemo />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/dashboard/profile" element={<ProfilePage />} />
               <Route path="/dashboard/items" element={<ItemsPage />} />

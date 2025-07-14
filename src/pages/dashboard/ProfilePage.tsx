@@ -20,7 +20,7 @@ export function ProfilePage() {
   
   const [firstName, setFirstName] = useState(user?.first_name || "")
   const [lastName, setLastName] = useState(user?.last_name || "")
-  const [email, setEmail] = useState(user?.email || "")
+  const [email] = useState(user?.email || "")
   
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -65,8 +65,9 @@ export function ProfilePage() {
       
       setFormSuccess(true)
       setTimeout(() => setFormSuccess(false), 3000)
-    } catch (error: any) {
-      setFormError(error.message || "Failed to update profile")
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update profile";
+      setFormError(errorMessage);
     } finally {
       setIsSubmitting(false)
     }
